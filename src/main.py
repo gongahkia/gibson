@@ -1334,6 +1334,39 @@ class IsometricVisualizer:
             fragment_shader=blur_fragment
         )
         
+        # UI overlay shader (simple texture rendering with alpha blending)
+        ui_vertex = """
+        #version 330 core
+        
+        in vec2 in_position;
+        in vec2 in_texcoord;
+        
+        out vec2 uv;
+        
+        void main() {
+            gl_Position = vec4(in_position, 0.0, 1.0);
+            uv = in_texcoord;
+        }
+        """
+        
+        ui_fragment = """
+        #version 330 core
+        
+        in vec2 uv;
+        out vec4 fragColor;
+        
+        uniform sampler2D ui_texture;
+        
+        void main() {
+            fragColor = texture(ui_texture, uv);
+        }
+        """
+        
+        self.ui_overlay_program = self.ctx.program(
+            vertex_shader=ui_vertex,
+            fragment_shader=ui_fragment
+        )
+        
         print("Bloom shaders initialized")
 
     def init_pygame(self):
