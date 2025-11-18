@@ -864,11 +864,31 @@ class IsometricVisualizer:
         out vec4 fragColor;
         
         uniform sampler2D scene_texture;
+        uniform sampler2D depth_texture;
+        uniform float fog_density;
+        uniform vec3 fog_color;
+        
+        // Convert depth buffer value to linear depth
+        float linearizeDepth(float depth, float near, float far) {
+            float z = depth * 2.0 - 1.0; // Back to NDC
+            return (2.0 * near * far) / (far + near - z * (far - near));
+        }
         
         void main() {
-            // Simple pass-through for now
             vec3 color = texture(scene_texture, uv).rgb;
-            fragColor = vec4(color, 1.0);
+            float depth = texture(depth_texture, uv).r;
+            
+            // Linearize depth (assuming near=0.1, far=500.0 from projection)
+            float linear_depth = linearizeDepth(depth, 0.1, 500.0);
+            
+            // Calculate fog factor (exponential fog)
+            float fog_factor = exp(-fog_density * linear_depth * 0.01);
+            fog_factor = clamp(fog_factor, 0.0, 1.0);
+            
+            // Mix scene color with fog
+            vec3 final_color = mix(fog_color, color, fog_factor);
+            
+            fragColor = vec4(final_color, 1.0);
         }
         """
         
@@ -882,6 +902,10 @@ class IsometricVisualizer:
             self.quad_program,
             [(self.quad_vbo, '2f 2f', 'in_position', 'in_texcoord')]
         )
+        
+        # Set default fog parameters
+        self.fog_density = 0.3
+        self.fog_color = (0.1, 0.1, 0.12)  # Dark blue-gray
         
         print("Post-processing quad initialized")
 
@@ -989,9 +1013,15 @@ class IsometricVisualizer:
         self.ctx.screen.use()
         self.ctx.clear(0.0, 0.0, 0.0, 1.0)
         
-        # Bind scene texture
+        # Bind scene textures
         self.scene_color_texture.use(location=0)
+        self.scene_depth_texture.use(location=1)
         self.quad_program['scene_texture'].value = 0
+        self.quad_program['depth_texture'].value = 1
+        
+        # Set fog uniforms
+        self.quad_program['fog_density'].value = self.fog_density
+        self.quad_program['fog_color'].value = self.fog_color
         
         # Render fullscreen quad
         self.quad_vao.render()
