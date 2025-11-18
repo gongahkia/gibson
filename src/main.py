@@ -309,22 +309,23 @@ class IsometricVisualizer:
     
     def _create_shaders(self):
         """
-        create vertex and fragment shaders for modern rendering
+        create vertex and fragment shaders for modern rendering with instancing
         """
         vertex_shader = """
         #version 330 core
         
-        uniform mat4 model;
         uniform mat4 view;
         uniform mat4 projection;
         
         in vec3 in_position;
-        in vec3 in_color;
+        in vec3 in_offset;      // Per-instance position
+        in vec3 in_color;       // Per-instance color
         
         out vec3 frag_color;
         
         void main() {
-            gl_Position = projection * view * model * vec4(in_position, 1.0);
+            vec3 world_pos = in_position + in_offset;
+            gl_Position = projection * view * vec4(world_pos, 1.0);
             frag_color = in_color;
         }
         """
@@ -381,7 +382,52 @@ class IsometricVisualizer:
         self.vbo = self.ctx.buffer(vertices.tobytes())
         self.ibo = self.ctx.buffer(indices.tobytes())
         
-        # Will create VAO in next commit with instancing
+        # Prepare instance data (positions and colors for all cubes)
+        self._prepare_instance_data()
+    
+    def _prepare_instance_data(self):
+        """
+        prepare per-instance data for all cubes in the structure
+        """
+        colors_map = {
+            CellType.EMPTY: (0.1, 0.1, 0.1),
+            CellType.VERTICAL: (0.2, 0.6, 0.8),
+            CellType.HORIZONTAL: (0.8, 0.4, 0.2),
+            CellType.BRIDGE: (0.6, 0.8, 0.2),
+            CellType.FACADE: (0.9, 0.9, 0.7),
+            CellType.STAIR: (0.7, 0.3, 0.7)
+        }
+        
+        instance_positions = []
+        instance_colors = []
+        
+        for x in range(self.generator.size):
+            for z in range(self.generator.size):
+                for y in range(self.generator.layers):
+                    cell_type = self.generator.grid[x][z][y]
+                    if cell_type != CellType.EMPTY:
+                        instance_positions.append([x, y, z])
+                        instance_colors.append(colors_map.get(cell_type, (1.0, 1.0, 1.0)))
+        
+        self.instance_count = len(instance_positions)
+        
+        if self.instance_count > 0:
+            positions_array = np.array(instance_positions, dtype='f4')
+            colors_array = np.array(instance_colors, dtype='f4')
+            
+            self.instance_vbo = self.ctx.buffer(positions_array.tobytes())
+            self.color_vbo = self.ctx.buffer(colors_array.tobytes())
+            
+            # Create VAO with instancing
+            self.vao = self.ctx.vertex_array(
+                self.shader_program,
+                [
+                    (self.vbo, '3f', 'in_position'),
+                    (self.instance_vbo, '3f /i', 'in_offset'),
+                    (self.color_vbo, '3f /i', 'in_color'),
+                ],
+                index_buffer=self.ibo
+            )
 
     def _init_font_system(self):
         """
