@@ -237,8 +237,13 @@ class MegaStructureGenerator:
 
     def generate_mega(self):
         """
-        generate a mega structure
+        generate a mega structure with optional seed for reproducibility
         """
+        # Initialize random state with seed
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(hash(self.seed) % (2**32))
+        
         self._create_vertical_cores()
         self._generate_floor_slabs()
         self._create_room_clusters()
