@@ -1358,14 +1358,13 @@ class IsometricVisualizer:
         
         # Initialize ModernGL context
         self.ctx = moderngl.create_context()
-        self.ctx.enable(moderngl.DEPTH_TEST)
+        self.ctx.enable(moderngl.DEPTH_TEST | moderngl.BLEND)
         self.ctx.depth_func = '<'  # Less than depth test
         self.ctx.enable(moderngl.CULL_FACE)
         self.ctx.cull_face = 'back'
         self.ctx.front_face = 'ccw'
-        self.ctx.enable(moderngl.BLEND)
         self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
-        self.ctx.clear_color = (0.1, 0.1, 0.1, 1.0)
+        self.ctx.clear_color = (0.05, 0.05, 0.08, 1.0)  # Darker background
         
         # Initialize framebuffers for post-processing
         self._init_framebuffers()
@@ -1563,7 +1562,9 @@ class IsometricVisualizer:
         
         # PASS 1: Render scene to offscreen framebuffer
         self.scene_fbo.use()
-        self.ctx.clear(0.1, 0.1, 0.1, 1.0)
+        self.ctx.viewport = (0, 0, *self.display)
+        self.ctx.clear(0.05, 0.05, 0.08, 1.0)  # Clear color
+        self.scene_fbo.clear(depth=1.0)  # Explicitly clear depth buffer
         
         if hasattr(self, 'vao') and self.instance_count > 0:
             # Calculate view matrix from camera
@@ -1579,6 +1580,7 @@ class IsometricVisualizer:
         # PASS 2: Bloom extraction (extract bright pixels)
         if self.enable_postprocessing:
             self.bloom_extract_fbo.use()
+            self.ctx.viewport = (0, 0, *self.display)
             self.ctx.clear(0.0, 0.0, 0.0, 1.0)
             
             self.scene_color_texture.use(location=0)
@@ -1593,6 +1595,7 @@ class IsometricVisualizer:
             for iteration in range(self.blur_iterations):
                 # Horizontal blur pass
                 self.bloom_blur1_fbo.use()
+                self.ctx.viewport = (0, 0, *self.display)
                 self.ctx.clear(0.0, 0.0, 0.0, 1.0)
                 
                 if iteration == 0:
@@ -1608,6 +1611,7 @@ class IsometricVisualizer:
                 
                 # Vertical blur pass
                 self.bloom_blur2_fbo.use()
+                self.ctx.viewport = (0, 0, *self.display)
                 self.ctx.clear(0.0, 0.0, 0.0, 1.0)
                 
                 self.bloom_blur1_texture.use(location=0)
@@ -1619,7 +1623,8 @@ class IsometricVisualizer:
         
         # PASS 4: Final composite (scene + bloom + fog)
         self.ctx.screen.use()
-        self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+        self.ctx.viewport = (0, 0, *self.display)
+        self.ctx.clear(0.05, 0.05, 0.08, 1.0)
         
         # Bind all textures
         self.scene_color_texture.use(location=0)
@@ -1651,14 +1656,57 @@ class IsometricVisualizer:
     
     def _render_ui_overlay(self):
         """
-        render UI overlay - temporarily disabled for Core Profile compatibility
-        TODO: Implement proper ModernGL UI rendering
+        render UI overlay with seed info and quit button using pygame overlay
         """
-        # Render debug panel to surface (for future use)
-        self.render_debug_panel()
+        # Create semi-transparent overlay surface
+        overlay = pygame.Surface(self.display, pygame.SRCALPHA)
         
-        # UI rendering disabled - info printed to console instead
-        pass
+        # Render seed info at top-left
+        seed_text = self.font.render(f"Seed: {self.seed}", True, (255, 255, 255, 220))
+        seed_bg = pygame.Surface((seed_text.get_width() + 20, seed_text.get_height() + 10), pygame.SRCALPHA)
+        seed_bg.fill((0, 0, 0, 180))
+        overlay.blit(seed_bg, (10, 10))
+        overlay.blit(seed_text, (20, 15))
+        
+        # Render controls at top-left
+        controls = [
+            "Controls:",
+            "Mouse Drag: Rotate | Wheel: Zoom",
+            "WASD: Pan | 1-5: Camera Presets",
+            "R: Regenerate | ESC/Q: Quit"
+        ]
+        y_offset = 50
+        for line in controls:
+            text = self.font.render(line, True, (200, 200, 200, 200))
+            text_bg = pygame.Surface((text.get_width() + 20, text.get_height() + 5), pygame.SRCALPHA)
+            text_bg.fill((0, 0, 0, 160))
+            overlay.blit(text_bg, (10, y_offset))
+            overlay.blit(text, (20, y_offset + 2))
+            y_offset += 25
+        
+        # Render quit button at bottom-right
+        quit_text = self.font.render("[Q] QUIT", True, (255, 100, 100, 240))
+        quit_bg = pygame.Surface((quit_text.get_width() + 30, quit_text.get_height() + 15), pygame.SRCALPHA)
+        quit_bg.fill((40, 0, 0, 200))
+        quit_x = self.display[0] - quit_bg.get_width() - 20
+        quit_y = self.display[1] - quit_bg.get_height() - 20
+        overlay.blit(quit_bg, (quit_x, quit_y))
+        overlay.blit(quit_text, (quit_x + 15, quit_y + 7))
+        
+        # Convert pygame surface to OpenGL texture and render
+        texture_data = pygame.image.tostring(overlay, 'RGBA', True)
+        if not hasattr(self, 'ui_texture'):
+            self.ui_texture = self.ctx.texture(self.display, 4, texture_data)
+            self.ui_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        else:
+            self.ui_texture.write(texture_data)
+        
+        # Disable depth test for UI overlay
+        self.ctx.disable(moderngl.DEPTH_TEST)
+        self.ui_texture.use(location=0)
+        self.ui_overlay_program['ui_texture'].value = 0
+        self.quad_vao.render()
+        self.ctx.enable(moderngl.DEPTH_TEST)
 
     def run(self):
         """
@@ -1751,6 +1799,10 @@ class IsometricVisualizer:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
+                        pygame.quit()
+                        sys.exit()
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # LMB
                         if self.inspection_mode:
