@@ -152,8 +152,17 @@ class MaterialType(Enum):
     METAL = 2
     NEON = 3
     RUST = 4
-    STEEL = 5    
+    STEEL = 5
 
+# Mapping of CellTypes to their primary materials
+CELL_TO_MATERIAL = {
+    CellType.EMPTY: MaterialType.CONCRETE,
+    CellType.VERTICAL: MaterialType.CONCRETE,
+    CellType.HORIZONTAL: MaterialType.CONCRETE,
+    CellType.BRIDGE: MaterialType.STEEL,
+    CellType.FACADE: MaterialType.GLASS,
+    CellType.STAIR: MaterialType.METAL,
+}
 class MegaStructureGenerator:
 
     def __init__(self, size=30, layers=15):
