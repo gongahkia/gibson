@@ -147,7 +147,9 @@ class CellType(Enum):
     ANTENNA = 7
     CABLE = 8
     VENT = 9
-    ELEVATOR = 10class MaterialType(Enum):
+    ELEVATOR = 10
+
+class MaterialType(Enum):
     """
     material types for rendering with PBR-like properties
     """
@@ -255,7 +257,7 @@ DISTRICT_PROPERTIES = {
         'core_density': 0.8,
         'floor_thickness': 1,
         'vertical_variation': 0.5,
-        'material_weights': {MaterialType.CONCRETE: 0.5, MaterialType.GLASS: 0.3, MaterialType.FACADE: 0.2},
+        'material_weights': {MaterialType.CONCRETE: 0.5, MaterialType.GLASS: 0.3, MaterialType.RUST: 0.2},
         'neon_probability': 0.2,
     },
     DistrictType.COMMERCIAL: {

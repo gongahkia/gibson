@@ -25,11 +25,10 @@ Clicking [`LMB`](https://en.wikipedia.org/wiki/Mouse_button) and [`RMB`](https:/
 ## Usage
 
 ```console
-$ git clone https://github.com/gongahkia/gibson
-$ cd gibson/src
-$ python3 -m venv gibson_env
+$ git clone https://github.com/gongahkia/gibson && cd gibson/src
+$ python3.12 -m venv gibson_env
 $ source gibson_env/bin/activate
-$ pip install -r requirements.txt
+$ uv pip install -r requirements.txt
 $ python3 main.py
 ```
 
