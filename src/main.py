@@ -688,44 +688,66 @@ class IsometricVisualizer:
     
     def _prepare_instance_data(self):
         """
-        prepare per-instance data for all cubes in the structure
+        prepare per-instance data with materials for all cubes in the structure
         """
-        colors_map = {
-            CellType.EMPTY: (0.1, 0.1, 0.1),
-            CellType.VERTICAL: (0.2, 0.6, 0.8),
-            CellType.HORIZONTAL: (0.8, 0.4, 0.2),
-            CellType.BRIDGE: (0.6, 0.8, 0.2),
-            CellType.FACADE: (0.9, 0.9, 0.7),
-            CellType.STAIR: (0.7, 0.3, 0.7)
-        }
-        
         instance_positions = []
         instance_colors = []
+        instance_metallic = []
+        instance_roughness = []
+        instance_emission = []
         
         for x in range(self.generator.size):
             for z in range(self.generator.size):
                 for y in range(self.generator.layers):
                     cell_type = self.generator.grid[x][z][y]
                     if cell_type != CellType.EMPTY:
+                        # Get material for this cell type
+                        material_type = CELL_TO_MATERIAL.get(cell_type, MaterialType.CONCRETE)
+                        material = MATERIAL_PROPERTIES[material_type]
+                        
+                        # Add procedural color variation using 3D noise
+                        noise_val = pnoise3(x * 0.1, y * 0.1, z * 0.1)
+                        color_var = 0.1 * noise_val  # ±10% variation
+                        varied_color = tuple(
+                            max(0.0, min(1.0, c + color_var))
+                            for c in material.base_color
+                        )
+                        
+                        # Add slight roughness variation
+                        roughness_var = 0.1 * pnoise3(x * 0.15, y * 0.15, z * 0.15)
+                        varied_roughness = max(0.0, min(1.0, material.roughness + roughness_var))
+                        
                         instance_positions.append([x, y, z])
-                        instance_colors.append(colors_map.get(cell_type, (1.0, 1.0, 1.0)))
+                        instance_colors.append(varied_color)
+                        instance_metallic.append(material.metallic)
+                        instance_roughness.append(varied_roughness)
+                        instance_emission.append(material.emission)
         
         self.instance_count = len(instance_positions)
         
         if self.instance_count > 0:
             positions_array = np.array(instance_positions, dtype='f4')
             colors_array = np.array(instance_colors, dtype='f4')
+            metallic_array = np.array(instance_metallic, dtype='f4')
+            roughness_array = np.array(instance_roughness, dtype='f4')
+            emission_array = np.array(instance_emission, dtype='f4')
             
             self.instance_vbo = self.ctx.buffer(positions_array.tobytes())
             self.color_vbo = self.ctx.buffer(colors_array.tobytes())
+            self.metallic_vbo = self.ctx.buffer(metallic_array.tobytes())
+            self.roughness_vbo = self.ctx.buffer(roughness_array.tobytes())
+            self.emission_vbo = self.ctx.buffer(emission_array.tobytes())
             
-            # Create VAO with instancing
+            # Create VAO with instancing and material data
             self.vao = self.ctx.vertex_array(
                 self.shader_program,
                 [
                     (self.vbo, '3f', 'in_position'),
                     (self.instance_vbo, '3f /i', 'in_offset'),
                     (self.color_vbo, '3f /i', 'in_color'),
+                    (self.metallic_vbo, '1f /i', 'in_metallic'),
+                    (self.roughness_vbo, '1f /i', 'in_roughness'),
+                    (self.emission_vbo, '1f /i', 'in_emission'),
                 ],
                 index_buffer=self.ibo
             )
