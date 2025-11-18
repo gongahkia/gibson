@@ -9,9 +9,10 @@ Randomly generated [megastructure](https://en.wikipedia.org/wiki/Megastructure)s
 
 ## Stack
 
-* *Script*: [Python](https://www.python.org/)
-* *Rendering*: ...
-* ...
+* *Script*: [Python 3.12](https://www.python.org/)
+* *Graphics*: [Pygame](https://www.pygame.org/), [ModernGL](https://moderngl.readthedocs.io/), [PyOpenGL](https://pyopengl.sourceforge.net/)
+* *Math*: [PyGLM](https://github.com/Zuzu-Typ/PyGLM), [NumPy](https://numpy.org/) 
+* *Generation*: [pypi/noise](https://pypi.org/project/noise/) 
 
 ## Screenshot
 
