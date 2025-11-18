@@ -1009,10 +1009,24 @@ def generate_seed():
     random.seed(time.time())
     return ''.join(random.choice(chars) for _ in range(8))
 
+def validate_seed(seed):
+    """validate seed format (8-character alphanumeric)"""
+    import string
+    if not seed or len(seed) != 8:
+        return False
+    valid_chars = set(string.ascii_uppercase + string.digits)
+    return all(c in valid_chars for c in seed.upper())
+
 if __name__ == '__main__':
     # Check for command-line seed argument
     import sys
-    seed = sys.argv[1] if len(sys.argv) > 1 else generate_seed()
+    if len(sys.argv) > 1:
+        seed = sys.argv[1].upper()
+        if not validate_seed(seed):
+            print(f"Error: Invalid seed '{sys.argv[1]}'. Seed must be 8 alphanumeric characters.")
+            sys.exit(1)
+    else:
+        seed = generate_seed()
     
     print(f"Gibson: generating structure with seed: {seed}")
     generator = MegaStructureGenerator(seed=seed)
