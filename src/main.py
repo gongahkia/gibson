@@ -560,22 +560,31 @@ class IsometricVisualizer:
 
     def render(self):
         """
-        render the scene
+        render the scene using moderngl
         """
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
-        distance = max(self.generator.size, self.generator.layers) * 1.5 / self.zoom
-        cam_x = distance * np.cos(np.radians(self.angle))
-        cam_z = distance * np.sin(np.radians(self.angle))
-        cam_y = distance * 0.5
-        center = (self.generator.size/2, self.generator.layers/2, self.generator.size/2)
-        gluLookAt(cam_x, cam_y, cam_z, *center, 0, 1, 0)
-        for x in range(self.generator.size):
-            for z in range(self.generator.size):
-                for y in range(self.generator.layers):
-                    cell_type = self.generator.grid[x][z][y]
-                    if cell_type != CellType.EMPTY:
-                        self.draw_cube((x, y, z), cell_type)
+        # Clear buffers
+        self.ctx.clear(0.1, 0.1, 0.1, 1.0)
+        
+        if hasattr(self, 'vao') and self.instance_count > 0:
+            # Calculate view matrix
+            view = self._calculate_view_matrix()
+            
+            # Set uniforms efficiently
+            self.shader_program['view'].write(glm.value_ptr(view))
+            self.shader_program['projection'].write(glm.value_ptr(self.projection))
+            
+            # Render all instances in one draw call
+            self.vao.render(instances=self.instance_count)
+        
+        # Legacy rendering for UI overlay
+        self._render_ui_overlay()
+        
+        pygame.display.flip()
+    
+    def _render_ui_overlay(self):
+        """
+        render UI overlay using legacy OpenGL for 2D elements
+        """
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()
         glLoadIdentity()
@@ -586,6 +595,7 @@ class IsometricVisualizer:
         glDisable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        
         self.render_debug_panel()
         tex_data = pygame.image.tostring(self.debug_surface, "RGBA", True)
         texture = glGenTextures(1)
@@ -603,13 +613,13 @@ class IsometricVisualizer:
         glEnd()
         glDisable(GL_TEXTURE_2D)
         glDeleteTextures([texture])
+        
         glMatrixMode(GL_PROJECTION)
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
         glPopMatrix()
         glEnable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
-        pygame.display.flip()
 
     def run(self):
         """
