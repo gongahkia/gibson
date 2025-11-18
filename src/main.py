@@ -368,13 +368,28 @@ class IsometricVisualizer:
         initialize the visualizer
         """
         self.generator = generator
-        self.angle = 45
+        self.angle = 45  # Legacy, kept for compatibility
         self.zoom = 1.0
         self.init_pygame()
         self._init_font_system()
         self.debug_surface = pygame.Surface((200, 180), pygame.SRCALPHA).convert_alpha()
         self._create_shaders()
         self._create_projection_matrix()
+        self._init_camera()
+    
+    def _init_camera(self):
+        """initialize camera with proper positioning"""
+        center_x = self.generator.size / 2
+        center_y = self.generator.layers / 2
+        center_z = self.generator.size / 2
+        distance = max(self.generator.size, self.generator.layers) * 1.5
+        
+        self.camera = Camera(
+            target=(center_x, center_y, center_z),
+            distance=distance,
+            angle=45.0,
+            pitch=30.0
+        )
     
     def _create_projection_matrix(self):
         """
@@ -385,22 +400,9 @@ class IsometricVisualizer:
     
     def _calculate_view_matrix(self):
         """
-        calculate view matrix based on current camera angle and zoom
+        calculate view matrix from camera - now uses Camera class
         """
-        distance = max(self.generator.size, self.generator.layers) * 1.5 / self.zoom
-        cam_x = distance * np.cos(np.radians(self.angle))
-        cam_z = distance * np.sin(np.radians(self.angle))
-        cam_y = distance * 0.5
-        
-        center_x = self.generator.size / 2
-        center_y = self.generator.layers / 2
-        center_z = self.generator.size / 2
-        
-        eye = glm.vec3(cam_x + center_x, cam_y + center_y, cam_z + center_z)
-        center = glm.vec3(center_x, center_y, center_z)
-        up = glm.vec3(0, 1, 0)
-        
-        return glm.lookAt(eye, center, up)
+        return self.camera.get_view_matrix()
     
     def _create_shaders(self):
         """
