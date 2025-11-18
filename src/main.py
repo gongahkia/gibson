@@ -30,10 +30,16 @@ class Camera:
         self.position = self._calculate_position()
         self.up = glm.vec3(0, 1, 0)
         
-        # Smoothing parameters
+        # Smoothing parameters with momentum
         self.rotation_speed = 5.0
         self.zoom_speed = 3.0
         self.pan_speed = 0.1
+        
+        # Velocity and acceleration for natural feel
+        self.angle_velocity = 0.0
+        self.pitch_velocity = 0.0
+        self.zoom_velocity = 0.0
+        self.damping = 0.85  # Friction/deceleration factor
         
     def _calculate_position(self):
         """calculate camera position from spherical coordinates"""
@@ -47,11 +53,26 @@ class Camera:
         return self.target + glm.vec3(x, y, z)
     
     def update(self, dt):
-        """smooth interpolation towards target values"""
-        # Interpolate angles
-        self.angle = self._lerp(self.angle, self.target_angle, dt * self.rotation_speed)
-        self.pitch = self._lerp(self.pitch, self.target_pitch, dt * self.rotation_speed)
-        self.distance = self._lerp(self.distance, self.target_distance, dt * self.zoom_speed)
+        """smooth interpolation towards target values with momentum"""
+        # Calculate deltas
+        angle_delta = self.target_angle - self.angle
+        pitch_delta = self.target_pitch - self.pitch
+        zoom_delta = self.target_distance - self.distance
+        
+        # Apply velocities (momentum)
+        self.angle_velocity += angle_delta * dt * self.rotation_speed
+        self.pitch_velocity += pitch_delta * dt * self.rotation_speed
+        self.zoom_velocity += zoom_delta * dt * self.zoom_speed
+        
+        # Apply damping (friction)
+        self.angle_velocity *= self.damping
+        self.pitch_velocity *= self.damping
+        self.zoom_velocity *= self.damping
+        
+        # Update positions with velocity
+        self.angle += self.angle_velocity * dt
+        self.pitch += self.pitch_velocity * dt
+        self.distance += self.zoom_velocity * dt
         
         # Clamp pitch to avoid gimbal lock
         self.pitch = glm.clamp(self.pitch, -89.0, 89.0)
