@@ -5,6 +5,8 @@ import random
 import sys
 import pygame
 import numpy as np
+import moderngl
+import glm
 from enum import Enum
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -320,11 +322,20 @@ class IsometricVisualizer:
 
     def init_pygame(self):
         """
-        initialize pygame
+        initialize pygame and moderngl context
         """
         pygame.init()
         self.screen = pygame.display.set_mode((0, 0), DOUBLEBUF|OPENGL|pygame.FULLSCREEN)
         self.display = pygame.display.get_surface().get_size()
+        
+        # Initialize ModernGL context
+        self.ctx = moderngl.create_context()
+        self.ctx.enable(moderngl.DEPTH_TEST)
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
+        self.ctx.clear_color = (0.1, 0.1, 0.1, 1.0)
+        
+        # Legacy OpenGL setup (will be removed in later commits)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
