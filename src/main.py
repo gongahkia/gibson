@@ -1239,6 +1239,102 @@ class IsometricVisualizer:
         self.enable_postprocessing = True
         
         print("Post-processing quad initialized")
+    
+    def _init_bloom_shaders(self):
+        """
+        create shader programs for bloom effects
+        """
+        # Bloom extraction shader (extract bright pixels)
+        bloom_extract_vertex = """
+        #version 330 core
+        
+        in vec2 in_position;
+        in vec2 in_texcoord;
+        
+        out vec2 uv;
+        
+        void main() {
+            gl_Position = vec4(in_position, 0.0, 1.0);
+            uv = in_texcoord;
+        }
+        """
+        
+        bloom_extract_fragment = """
+        #version 330 core
+        
+        in vec2 uv;
+        out vec4 fragColor;
+        
+        uniform sampler2D scene_texture;
+        uniform float bloom_threshold;
+        
+        void main() {
+            vec3 color = texture(scene_texture, uv).rgb;
+            
+            // Calculate luminance
+            float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+            
+            // Extract bright pixels above threshold
+            if (luminance > bloom_threshold) {
+                fragColor = vec4(color, 1.0);
+            } else {
+                fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+        }
+        """
+        
+        self.bloom_extract_program = self.ctx.program(
+            vertex_shader=bloom_extract_vertex,
+            fragment_shader=bloom_extract_fragment
+        )
+        
+        # Gaussian blur shader (separable - horizontal and vertical passes)
+        blur_vertex = """
+        #version 330 core
+        
+        in vec2 in_position;
+        in vec2 in_texcoord;
+        
+        out vec2 uv;
+        
+        void main() {
+            gl_Position = vec4(in_position, 0.0, 1.0);
+            uv = in_texcoord;
+        }
+        """
+        
+        blur_fragment = """
+        #version 330 core
+        
+        in vec2 uv;
+        out vec4 fragColor;
+        
+        uniform sampler2D input_texture;
+        uniform vec2 blur_direction;  // (1,0) for horizontal, (0,1) for vertical
+        uniform vec2 texture_size;
+        
+        // 9-tap Gaussian blur kernel
+        const float weights[5] = float[](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+        
+        void main() {
+            vec2 tex_offset = 1.0 / texture_size * blur_direction;
+            vec3 result = texture(input_texture, uv).rgb * weights[0];
+            
+            for(int i = 1; i < 5; i++) {
+                result += texture(input_texture, uv + tex_offset * float(i)).rgb * weights[i];
+                result += texture(input_texture, uv - tex_offset * float(i)).rgb * weights[i];
+            }
+            
+            fragColor = vec4(result, 1.0);
+        }
+        """
+        
+        self.blur_program = self.ctx.program(
+            vertex_shader=blur_vertex,
+            fragment_shader=blur_fragment
+        )
+        
+        print("Bloom shaders initialized")
 
     def init_pygame(self):
         """
