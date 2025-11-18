@@ -315,6 +315,25 @@ class IsometricVisualizer:
         aspect_ratio = self.display[0] / self.display[1]
         self.projection = glm.perspective(glm.radians(45.0), aspect_ratio, 0.1, 1000.0)
     
+    def _calculate_view_matrix(self):
+        """
+        calculate view matrix based on current camera angle and zoom
+        """
+        distance = max(self.generator.size, self.generator.layers) * 1.5 / self.zoom
+        cam_x = distance * np.cos(np.radians(self.angle))
+        cam_z = distance * np.sin(np.radians(self.angle))
+        cam_y = distance * 0.5
+        
+        center_x = self.generator.size / 2
+        center_y = self.generator.layers / 2
+        center_z = self.generator.size / 2
+        
+        eye = glm.vec3(cam_x + center_x, cam_y + center_y, cam_z + center_z)
+        center = glm.vec3(center_x, center_y, center_z)
+        up = glm.vec3(0, 1, 0)
+        
+        return glm.lookAt(eye, center, up)
+    
     def _create_shaders(self):
         """
         create vertex and fragment shaders for modern rendering with instancing
