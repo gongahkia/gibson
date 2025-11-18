@@ -830,7 +830,27 @@ class IsometricVisualizer:
         self.scene_color_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         self.scene_world_pos_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         
-        print(f"Framebuffers initialized: {width}x{height}")
+        # Bloom framebuffers (for bright pass extraction and blur)
+        self.bloom_extract_texture = self.ctx.texture((width, height), 4, dtype='f4')
+        self.bloom_extract_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        self.bloom_extract_fbo = self.ctx.framebuffer(
+            color_attachments=[self.bloom_extract_texture]
+        )
+        
+        # Ping-pong framebuffers for Gaussian blur
+        self.bloom_blur1_texture = self.ctx.texture((width, height), 4, dtype='f4')
+        self.bloom_blur1_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        self.bloom_blur1_fbo = self.ctx.framebuffer(
+            color_attachments=[self.bloom_blur1_texture]
+        )
+        
+        self.bloom_blur2_texture = self.ctx.texture((width, height), 4, dtype='f4')
+        self.bloom_blur2_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        self.bloom_blur2_fbo = self.ctx.framebuffer(
+            color_attachments=[self.bloom_blur2_texture]
+        )
+        
+        print(f"Framebuffers initialized: {width}x{height} (scene + bloom)")
     
     def _init_postprocessing_quad(self):
         """
@@ -872,9 +892,12 @@ class IsometricVisualizer:
         uniform sampler2D scene_texture;
         uniform sampler2D depth_texture;
         uniform sampler2D world_pos_texture;
+        uniform sampler2D bloom_texture;
         uniform float fog_density;
         uniform vec3 fog_color;
         uniform float fog_height_falloff;
+        uniform float bloom_intensity;
+        uniform bool enable_postprocessing;
         
         // Convert depth buffer value to linear depth
         float linearizeDepth(float depth, float near, float far) {
@@ -884,8 +907,19 @@ class IsometricVisualizer:
         
         void main() {
             vec3 color = texture(scene_texture, uv).rgb;
+            
+            // Early exit if post-processing disabled
+            if (!enable_postprocessing) {
+                fragColor = vec4(color, 1.0);
+                return;
+            }
+            
             float depth = texture(depth_texture, uv).r;
             vec3 world_pos = texture(world_pos_texture, uv).rgb;
+            vec3 bloom = texture(bloom_texture, uv).rgb;
+            
+            // Add bloom (additive blending)
+            color += bloom * bloom_intensity;
             
             // Linearize depth (assuming near=0.1, far=500.0 from projection)
             float linear_depth = linearizeDepth(depth, 0.1, 500.0);
@@ -925,6 +959,14 @@ class IsometricVisualizer:
         self.fog_color = (0.1, 0.1, 0.12)  # Dark blue-gray
         self.fog_height_falloff = 0.05  # Lower values = more ground-level fog
         
+        # Bloom parameters
+        self.bloom_threshold = 0.8  # Brightness threshold for bloom extraction
+        self.bloom_intensity = 0.5  # Bloom strength
+        self.blur_iterations = 3  # Number of blur passes per direction
+        
+        # Post-processing toggle
+        self.enable_postprocessing = True
+        
         print("Post-processing quad initialized")
 
     def init_pygame(self):
@@ -961,6 +1003,9 @@ class IsometricVisualizer:
         
         # Initialize fullscreen quad for post-processing
         self._init_postprocessing_quad()
+        
+        # Initialize bloom shader programs
+        self._init_bloom_shaders()
 
     def draw_cube(self, position, cell_type):
         """
@@ -976,22 +1021,39 @@ class IsometricVisualizer:
         self.debug_surface.fill((50, 50, 50, 180))
         y_offset = 10
         legend_items = [
+            ("MATERIALS", None),
             ("Concrete", (0.6, 0.6, 0.65)),
             ("Glass", (0.7, 0.85, 0.95)),
             ("Metal", (0.7, 0.7, 0.75)),
             ("Neon", (0.1, 0.9, 0.9)),
             ("Steel", (0.5, 0.5, 0.6)),
-            ("", (0, 0, 0)),  # Spacer
+            ("", None),
+            ("CAMERA", None),
             ("1-5: Views", (0.8, 0.8, 0.8)),
+            ("", None),
+            ("SEED", None),
             ("R: Regen", (0.8, 0.8, 0.8)),
             ("S: Save Seed", (0.8, 0.8, 0.8)),
+            ("", None),
+            ("POST-FX", None),
+            ("P: Toggle", (0.8, 0.8, 0.8)),
+            ("[/]: Fog", (0.8, 0.8, 0.8)),
+            ("-/=: Bloom", (0.8, 0.8, 0.8)),
         ]
         for text, color in legend_items:
-            pygame_color = [int(c * 255) for c in color]
-            text_surface = self.font.render(text, True, (255, 255, 255))
-            pygame.draw.rect(self.debug_surface, pygame_color, (10, y_offset, 20, 20))
-            self.debug_surface.blit(text_surface, (40, y_offset))
-            y_offset += 30
+            if color is None:
+                # Header text
+                text_surface = self.font.render(text, True, (255, 255, 128))
+                self.debug_surface.blit(text_surface, (10, y_offset))
+            else:
+                pygame_color = [int(c * 255) for c in color]
+                text_surface = self.font.render(text, True, (255, 255, 255))
+                if text and not text.startswith(("1-", "R:", "S:", "P:", "[", "-")):
+                    pygame.draw.rect(self.debug_surface, pygame_color, (10, y_offset, 20, 20))
+                    self.debug_surface.blit(text_surface, (40, y_offset))
+                else:
+                    self.debug_surface.blit(text_surface, (10, y_offset))
+            y_offset += 25
         angle_text = self.font.render(f"Angle: {self.angle}°", True, (255, 255, 255))
         self.debug_surface.blit(angle_text, (10, y_offset))
         y_offset += 30
@@ -1027,22 +1089,70 @@ class IsometricVisualizer:
             # Render all instances in one draw call
             self.vao.render(instances=self.instance_count)
         
-        # PASS 2: Render framebuffer texture to screen with post-processing
+        # PASS 2: Bloom extraction (extract bright pixels)
+        if self.enable_postprocessing:
+            self.bloom_extract_fbo.use()
+            self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+            
+            self.scene_color_texture.use(location=0)
+            self.bloom_extract_program['scene_texture'].value = 0
+            self.bloom_extract_program['bloom_threshold'].value = self.bloom_threshold
+            
+            self.quad_vao.render()
+            
+            # PASS 3: Gaussian blur (separable two-pass)
+            width, height = self.display
+            
+            for iteration in range(self.blur_iterations):
+                # Horizontal blur pass
+                self.bloom_blur1_fbo.use()
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+                
+                if iteration == 0:
+                    self.bloom_extract_texture.use(location=0)
+                else:
+                    self.bloom_blur2_texture.use(location=0)
+                
+                self.blur_program['input_texture'].value = 0
+                self.blur_program['blur_direction'].value = (1.0, 0.0)
+                self.blur_program['texture_size'].value = (width, height)
+                
+                self.quad_vao.render()
+                
+                # Vertical blur pass
+                self.bloom_blur2_fbo.use()
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+                
+                self.bloom_blur1_texture.use(location=0)
+                self.blur_program['input_texture'].value = 0
+                self.blur_program['blur_direction'].value = (0.0, 1.0)
+                self.blur_program['texture_size'].value = (width, height)
+                
+                self.quad_vao.render()
+        
+        # PASS 4: Final composite (scene + bloom + fog)
         self.ctx.screen.use()
         self.ctx.clear(0.0, 0.0, 0.0, 1.0)
         
-        # Bind scene textures
+        # Bind all textures
         self.scene_color_texture.use(location=0)
         self.scene_depth_texture.use(location=1)
         self.scene_world_pos_texture.use(location=2)
+        self.bloom_blur2_texture.use(location=3)
+        
         self.quad_program['scene_texture'].value = 0
         self.quad_program['depth_texture'].value = 1
         self.quad_program['world_pos_texture'].value = 2
+        self.quad_program['bloom_texture'].value = 3
         
         # Set fog uniforms
         self.quad_program['fog_density'].value = self.fog_density
         self.quad_program['fog_color'].value = self.fog_color
         self.quad_program['fog_height_falloff'].value = self.fog_height_falloff
+        
+        # Set bloom uniforms
+        self.quad_program['bloom_intensity'].value = self.bloom_intensity
+        self.quad_program['enable_postprocessing'].value = self.enable_postprocessing
         
         # Render fullscreen quad
         self.quad_vao.render()
@@ -1073,14 +1183,14 @@ class IsometricVisualizer:
         glBindTexture(GL_TEXTURE_2D, texture)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 200, 270, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 200, 330, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
         glEnable(GL_TEXTURE_2D)
         glColor4f(1, 1, 1, 1)
         glBegin(GL_QUADS)
         glTexCoord2f(0, 1); glVertex2f(self.display[0]-200, 0)
         glTexCoord2f(1, 1); glVertex2f(self.display[0], 0)
-        glTexCoord2f(1, 0); glVertex2f(self.display[0], 270)
-        glTexCoord2f(0, 0); glVertex2f(self.display[0]-200, 270)
+        glTexCoord2f(1, 0); glVertex2f(self.display[0], 330)
+        glTexCoord2f(0, 0); glVertex2f(self.display[0]-200, 330)
         glEnd()
         glDisable(GL_TEXTURE_2D)
         glDeleteTextures([texture])
@@ -1146,6 +1256,29 @@ class IsometricVisualizer:
                     f.write(self.seed)
                 print("Seed written to current_seed.txt")
                 pygame.time.wait(500)
+            
+            # Press 'P' to toggle post-processing effects
+            if keys[pygame.K_p]:
+                self.enable_postprocessing = not self.enable_postprocessing
+                status = "enabled" if self.enable_postprocessing else "disabled"
+                print(f"Post-processing {status}")
+                pygame.time.wait(300)
+            
+            # Adjust fog density with '[' and ']'
+            if keys[pygame.K_LEFTBRACKET]:
+                self.fog_density = max(0.0, self.fog_density - 0.05)
+                print(f"Fog density: {self.fog_density:.2f}")
+            if keys[pygame.K_RIGHTBRACKET]:
+                self.fog_density = min(2.0, self.fog_density + 0.05)
+                print(f"Fog density: {self.fog_density:.2f}")
+            
+            # Adjust bloom intensity with '-' and '='
+            if keys[pygame.K_MINUS]:
+                self.bloom_intensity = max(0.0, self.bloom_intensity - 0.1)
+                print(f"Bloom intensity: {self.bloom_intensity:.2f}")
+            if keys[pygame.K_EQUALS]:
+                self.bloom_intensity = min(2.0, self.bloom_intensity + 0.1)
+                print(f"Bloom intensity: {self.bloom_intensity:.2f}")
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
