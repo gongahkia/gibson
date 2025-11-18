@@ -305,6 +305,45 @@ class IsometricVisualizer:
         self.init_pygame()
         self._init_font_system()
         self.debug_surface = pygame.Surface((200, 180), pygame.SRCALPHA).convert_alpha()
+        self._create_shaders()
+    
+    def _create_shaders(self):
+        """
+        create vertex and fragment shaders for modern rendering
+        """
+        vertex_shader = """
+        #version 330 core
+        
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+        
+        in vec3 in_position;
+        in vec3 in_color;
+        
+        out vec3 frag_color;
+        
+        void main() {
+            gl_Position = projection * view * model * vec4(in_position, 1.0);
+            frag_color = in_color;
+        }
+        """
+        
+        fragment_shader = """
+        #version 330 core
+        
+        in vec3 frag_color;
+        out vec4 out_color;
+        
+        void main() {
+            out_color = vec4(frag_color, 1.0);
+        }
+        """
+        
+        self.shader_program = self.ctx.program(
+            vertex_shader=vertex_shader,
+            fragment_shader=fragment_shader
+        )
 
     def _init_font_system(self):
         """
