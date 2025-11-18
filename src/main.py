@@ -556,12 +556,14 @@ class IsometricVisualizer:
         in float in_metallic;      // Per-instance metallic value
         in float in_roughness;     // Per-instance roughness value
         in float in_emission;      // Per-instance emission strength
+        in float in_alpha;         // Per-instance transparency
         
         out vec3 frag_pos;
         out vec3 frag_color;
         out float frag_metallic;
         out float frag_roughness;
         out float frag_emission;
+        out float frag_alpha;
         
         void main() {
             vec3 world_pos = in_position + in_offset;
@@ -571,6 +573,7 @@ class IsometricVisualizer:
             frag_metallic = in_metallic;
             frag_roughness = in_roughness;
             frag_emission = in_emission;
+            frag_alpha = in_alpha;
         }
         """
         
@@ -582,6 +585,7 @@ class IsometricVisualizer:
         in float frag_metallic;
         in float frag_roughness;
         in float frag_emission;
+        in float frag_alpha;
         
         out vec4 out_color;
         
@@ -638,7 +642,8 @@ class IsometricVisualizer:
             // Gamma correction
             final_color = pow(final_color, vec3(1.0/2.2));
             
-            out_color = vec4(final_color, 1.0);
+            // Apply alpha/transparency
+            out_color = vec4(final_color, frag_alpha);
         }
         """
         
