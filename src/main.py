@@ -832,11 +832,11 @@ class IsometricVisualizer:
         self.debug_surface.fill((50, 50, 50, 180))
         y_offset = 10
         legend_items = [
-            ("Vertical", (0.2, 0.6, 0.8)),
-            ("Horizontal", (0.8, 0.4, 0.2)),
-            ("Bridge", (0.6, 0.8, 0.2)),
-            ("Facade", (0.9, 0.9, 0.7)),
-            ("Stair", (0.7, 0.3, 0.7)),
+            ("Concrete", (0.6, 0.6, 0.65)),
+            ("Glass", (0.7, 0.85, 0.95)),
+            ("Metal", (0.7, 0.7, 0.75)),
+            ("Neon", (0.1, 0.9, 0.9)),
+            ("Steel", (0.5, 0.5, 0.6)),
             ("", (0, 0, 0)),  # Spacer
             ("Keys: 1-5", (0.8, 0.8, 0.8)),
         ]
