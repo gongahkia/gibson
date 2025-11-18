@@ -3,24 +3,19 @@
 
 # `Gibson` 🗼
 
-[Single-file](./src/main.py), [484-line](./src/main.py) megastructure generator and visualiser.
+[Single-file](./src/main.py), [1969-line](./src/main.py) megastructure generator and visualiser.
 
-[Megastructure](https://en.wikipedia.org/wiki/Megastructure)s are randomly generated and serialised at `structure.json`.
+Randomly generated [megastructure](https://en.wikipedia.org/wiki/Megastructure)s are seeded at `current_seed.txt` and serialised at `structure.json`.
 
-Structures are visualised from an [isomteric](https://en.wikipedia.org/wiki/Isometric_projection) perspective.
+## Stack
 
-Clicking [`LMB`](https://en.wikipedia.org/wiki/Mouse_button) and [`RMB`](https://en.wikipedia.org/wiki/Mouse_button) rotates the structure 45° left and right respectively.
+* *Script*: [Python](https://www.python.org/)
+* *Rendering*: ...
+* ...
 
 ## Screenshot
 
-![](./asset/reference/1.png)
-![](./asset/reference/2.png)
-![](./asset/reference/3.png)
-![](./asset/reference/4.png)
-![](./asset/reference/5.png)
-![](./asset/reference/6.png)
-![](./asset/reference/7.png)
-![](./asset/reference/8.png)
+![](./asset/reference/v2/1.png)
 
 ## Usage
 
@@ -74,21 +69,6 @@ graph LR
     L & M --> K@{ shape: pill, label: "Pygame & OpenGL" }
     K --> P@{ shape: framed-circle }
 ```
-
-## Layout
-
-| Function name | Purpose |
-| :--- | :--- |
-| `generate_mega()` | orchestrates generation process |
-| `_create_vertical_cores()` | generates the main vertical structures |
-| `_generate_floor_slabs()` | creates horizontal platforms connecting the vertical cores |
-| `_create_room_clusters()` | carves out defined spaces within the structure |
-| `_connect_vertical_cores()` | builds bridges and stairs to connect vertical cores |
-| `_ensure_structural_integrity()` | checks and removes unsupported elements |
-| `_add_support_pillars()` | adds additional vertical supports |
-| `_add_secondary_structures()` | generates additional structures |
-| `_create_sky_bridges()` | builds elevated connections between distant parts of the structure |
-| `save_structure()` and `load_structure()` | handle saving and loading the generated structure to/from a local `.json` file |
 
 ## Reference
 
