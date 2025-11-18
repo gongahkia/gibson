@@ -3,4 +3,4 @@ noise
 pygame
 pyopengl
 moderngl
-glm 
+PyGLM 
