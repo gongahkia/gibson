@@ -141,7 +141,18 @@ class CellType(Enum):
     HORIZONTAL = 2  
     BRIDGE = 3     
     FACADE = 4     
-    STAIR = 5    
+    STAIR = 5
+
+class MaterialType(Enum):
+    """
+    material types for rendering with PBR-like properties
+    """
+    CONCRETE = 0
+    GLASS = 1
+    METAL = 2
+    NEON = 3
+    RUST = 4
+    STEEL = 5    
 
 class MegaStructureGenerator:
 
