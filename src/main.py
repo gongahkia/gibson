@@ -15,6 +15,74 @@ from pygame.locals import *
 
 # ----- HELPER FUNCTIONS -----
 
+class Camera:
+    """
+    camera class for smooth orbital camera controls
+    """
+    def __init__(self, target, distance, angle=45.0, pitch=30.0):
+        self.target = glm.vec3(target[0], target[1], target[2])
+        self.distance = distance
+        self.angle = angle  # Azimuth angle in degrees
+        self.pitch = pitch  # Elevation angle in degrees
+        self.target_angle = angle
+        self.target_pitch = pitch
+        self.target_distance = distance
+        self.position = self._calculate_position()
+        self.up = glm.vec3(0, 1, 0)
+        
+        # Smoothing parameters
+        self.rotation_speed = 5.0
+        self.zoom_speed = 3.0
+        self.pan_speed = 0.1
+        
+    def _calculate_position(self):
+        """calculate camera position from spherical coordinates"""
+        rad_angle = glm.radians(self.angle)
+        rad_pitch = glm.radians(self.pitch)
+        
+        x = self.distance * glm.cos(rad_pitch) * glm.cos(rad_angle)
+        y = self.distance * glm.sin(rad_pitch)
+        z = self.distance * glm.cos(rad_pitch) * glm.sin(rad_angle)
+        
+        return self.target + glm.vec3(x, y, z)
+    
+    def update(self, dt):
+        """smooth interpolation towards target values"""
+        # Interpolate angles
+        self.angle = self._lerp(self.angle, self.target_angle, dt * self.rotation_speed)
+        self.pitch = self._lerp(self.pitch, self.target_pitch, dt * self.rotation_speed)
+        self.distance = self._lerp(self.distance, self.target_distance, dt * self.zoom_speed)
+        
+        # Clamp pitch to avoid gimbal lock
+        self.pitch = glm.clamp(self.pitch, -89.0, 89.0)
+        
+        # Recalculate position
+        self.position = self._calculate_position()
+    
+    def _lerp(self, current, target, t):
+        """linear interpolation"""
+        return current + (target - current) * min(t, 1.0)
+    
+    def get_view_matrix(self):
+        """get view matrix for rendering"""
+        return glm.lookAt(self.position, self.target, self.up)
+    
+    def rotate(self, delta_angle, delta_pitch=0.0):
+        """set target rotation"""
+        self.target_angle += delta_angle
+        self.target_pitch += delta_pitch
+    
+    def zoom(self, delta):
+        """set target zoom"""
+        self.target_distance = glm.clamp(self.target_distance + delta, 5.0, 200.0)
+    
+    def pan(self, dx, dy):
+        """pan camera target"""
+        right = glm.normalize(glm.cross(self.target - self.position, self.up))
+        forward = glm.normalize(glm.cross(self.up, right))
+        self.target += right * dx * self.pan_speed + forward * dy * self.pan_speed
+
+
 class CellType(Enum):
     """
     cell types
