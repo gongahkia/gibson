@@ -113,6 +113,23 @@ class Camera:
         right = glm.normalize(glm.cross(self.target - self.position, self.up))
         forward = glm.normalize(glm.cross(self.up, right))
         self.target += right * dx * self.pan_speed + forward * dy * self.pan_speed
+    
+    def set_preset(self, preset_name):
+        """set camera to preset position"""
+        presets = {
+            'top': (0.0, 89.0),         # Top-down view
+            'front': (0.0, 0.0),        # Front view
+            'side': (90.0, 0.0),        # Side view
+            'perspective': (45.0, 30.0), # Default perspective
+            'isometric': (45.0, 35.264), # True isometric angle
+        }
+        if preset_name in presets:
+            angle, pitch = presets[preset_name]
+            self.target_angle = angle
+            self.target_pitch = pitch
+            # Reset velocities for instant response
+            self.angle_velocity = 0.0
+            self.pitch_velocity = 0.0
 
 
 class CellType(Enum):
@@ -638,7 +655,9 @@ class IsometricVisualizer:
             ("Horizontal", (0.8, 0.4, 0.2)),
             ("Bridge", (0.6, 0.8, 0.2)),
             ("Facade", (0.9, 0.9, 0.7)),
-            ("Stair", (0.7, 0.3, 0.7))
+            ("Stair", (0.7, 0.3, 0.7)),
+            ("", (0, 0, 0)),  # Spacer
+            ("Keys: 1-5", (0.8, 0.8, 0.8)),
         ]
         for text, color in legend_items:
             pygame_color = [int(c * 255) for c in color]
@@ -735,6 +754,18 @@ class IsometricVisualizer:
                 self.camera.pan(-1, 0)
             if keys[pygame.K_d]:
                 self.camera.pan(1, 0)
+            
+            # Camera preset hotkeys (1-5)
+            if keys[pygame.K_1]:
+                self.camera.set_preset('top')
+            if keys[pygame.K_2]:
+                self.camera.set_preset('front')
+            if keys[pygame.K_3]:
+                self.camera.set_preset('side')
+            if keys[pygame.K_4]:
+                self.camera.set_preset('perspective')
+            if keys[pygame.K_5]:
+                self.camera.set_preset('isometric')
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
