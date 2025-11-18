@@ -825,6 +825,65 @@ class IsometricVisualizer:
         self.scene_color_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         
         print(f"Framebuffers initialized: {width}x{height}")
+    
+    def _init_postprocessing_quad(self):
+        """
+        create fullscreen quad for post-processing effects
+        """
+        # Fullscreen quad vertices (NDC coordinates: -1 to 1)
+        quad_vertices = np.array([
+            # positions  # texCoords
+            -1.0,  1.0,  0.0, 1.0,
+            -1.0, -1.0,  0.0, 0.0,
+             1.0, -1.0,  1.0, 0.0,
+            
+            -1.0,  1.0,  0.0, 1.0,
+             1.0, -1.0,  1.0, 0.0,
+             1.0,  1.0,  1.0, 1.0
+        ], dtype='f4')
+        
+        # Simple pass-through shader for now (will add effects later)
+        quad_vertex_shader = """
+        #version 330 core
+        
+        in vec2 in_position;
+        in vec2 in_texcoord;
+        
+        out vec2 uv;
+        
+        void main() {
+            gl_Position = vec4(in_position, 0.0, 1.0);
+            uv = in_texcoord;
+        }
+        """
+        
+        quad_fragment_shader = """
+        #version 330 core
+        
+        in vec2 uv;
+        out vec4 fragColor;
+        
+        uniform sampler2D scene_texture;
+        
+        void main() {
+            // Simple pass-through for now
+            vec3 color = texture(scene_texture, uv).rgb;
+            fragColor = vec4(color, 1.0);
+        }
+        """
+        
+        self.quad_program = self.ctx.program(
+            vertex_shader=quad_vertex_shader,
+            fragment_shader=quad_fragment_shader
+        )
+        
+        self.quad_vbo = self.ctx.buffer(quad_vertices.tobytes())
+        self.quad_vao = self.ctx.vertex_array(
+            self.quad_program,
+            [(self.quad_vbo, '2f 2f', 'in_position', 'in_texcoord')]
+        )
+        
+        print("Post-processing quad initialized")
 
     def init_pygame(self):
         """
@@ -857,6 +916,9 @@ class IsometricVisualizer:
         
         # Initialize framebuffers for post-processing
         self._init_framebuffers()
+        
+        # Initialize fullscreen quad for post-processing
+        self._init_postprocessing_quad()
 
     def draw_cube(self, position, cell_type):
         """
@@ -908,7 +970,8 @@ class IsometricVisualizer:
         dt = 1.0 / 60.0  # Assuming 60 FPS target
         self.camera.update(dt)
         
-        # Clear buffers
+        # PASS 1: Render scene to offscreen framebuffer
+        self.scene_fbo.use()
         self.ctx.clear(0.1, 0.1, 0.1, 1.0)
         
         if hasattr(self, 'vao') and self.instance_count > 0:
@@ -921,6 +984,17 @@ class IsometricVisualizer:
             
             # Render all instances in one draw call
             self.vao.render(instances=self.instance_count)
+        
+        # PASS 2: Render framebuffer texture to screen with post-processing
+        self.ctx.screen.use()
+        self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+        
+        # Bind scene texture
+        self.scene_color_texture.use(location=0)
+        self.quad_program['scene_texture'].value = 0
+        
+        # Render fullscreen quad
+        self.quad_vao.render()
         
         # Legacy rendering for UI overlay
         self._render_ui_overlay()
