@@ -1,4 +1,6 @@
 numpy
 noise
 pygame
-pyopengl 
+pyopengl
+moderngl
+glm 
