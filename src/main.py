@@ -376,6 +376,10 @@ class IsometricVisualizer:
         self._create_shaders()
         self._create_projection_matrix()
         self._init_camera()
+        
+        # Mouse interaction state
+        self.mouse_dragging = False
+        self.last_mouse_pos = None
     
     def _init_camera(self):
         """initialize camera with proper positioning"""
@@ -680,7 +684,7 @@ class IsometricVisualizer:
 
     def run(self):
         """
-        run the visualizer with smooth camera controls
+        run the visualizer with smooth camera controls and mouse drag
         """
         clock = pygame.time.Clock()
         while True:
@@ -689,14 +693,35 @@ class IsometricVisualizer:
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:  # LMB - smooth rotate left
-                        self.camera.rotate(-45.0)
+                    if event.button == 1:  # LMB - start drag or quick rotate
+                        self.mouse_dragging = True
+                        self.last_mouse_pos = pygame.mouse.get_pos()
+                        self.drag_start_time = pygame.time.get_ticks()
                     elif event.button == 3:  # RMB - smooth rotate right
                         self.camera.rotate(45.0)
                     elif event.button == 4:  # Mouse wheel up - zoom in
                         self.camera.zoom(-5.0)
                     elif event.button == 5:  # Mouse wheel down - zoom out
                         self.camera.zoom(5.0)
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    if event.button == 1:
+                        # If click was quick (no drag), rotate left
+                        if self.mouse_dragging and pygame.time.get_ticks() - self.drag_start_time < 200:
+                            if self.last_mouse_pos == pygame.mouse.get_pos():
+                                self.camera.rotate(-45.0)
+                        self.mouse_dragging = False
+                        self.last_mouse_pos = None
+                elif event.type == pygame.MOUSEMOTION:
+                    if self.mouse_dragging and self.last_mouse_pos:
+                        # Free rotation via mouse drag
+                        current_pos = pygame.mouse.get_pos()
+                        dx = current_pos[0] - self.last_mouse_pos[0]
+                        dy = current_pos[1] - self.last_mouse_pos[1]
+                        
+                        # Rotate camera based on drag distance
+                        self.camera.rotate(-dx * 0.3, -dy * 0.3)
+                        self.last_mouse_pos = current_pos
+            
             self.render()
             clock.tick(60)
 
