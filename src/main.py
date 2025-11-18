@@ -41,6 +41,12 @@ class Camera:
         self.zoom_velocity = 0.0
         self.damping = 0.85  # Friction/deceleration factor
         
+        # Camera constraints
+        self.min_pitch = -89.0
+        self.max_pitch = 89.0
+        self.min_distance = None  # Set dynamically
+        self.max_distance = None  # Set dynamically
+        
     def _calculate_position(self):
         """calculate camera position from spherical coordinates"""
         rad_angle = glm.radians(self.angle)
@@ -74,8 +80,11 @@ class Camera:
         self.pitch += self.pitch_velocity * dt
         self.distance += self.zoom_velocity * dt
         
-        # Clamp pitch to avoid gimbal lock
-        self.pitch = glm.clamp(self.pitch, -89.0, 89.0)
+        # Apply constraints
+        self.pitch = glm.clamp(self.pitch, self.min_pitch, self.max_pitch)
+        if self.min_distance and self.max_distance:
+            self.distance = glm.clamp(self.distance, self.min_distance, self.max_distance)
+            self.target_distance = glm.clamp(self.target_distance, self.min_distance, self.max_distance)
         
         # Recalculate position
         self.position = self._calculate_position()
@@ -405,7 +414,7 @@ class IsometricVisualizer:
         self.last_mouse_pos = None
     
     def _init_camera(self):
-        """initialize camera with proper positioning"""
+        """initialize camera with proper positioning and constraints"""
         center_x = self.generator.size / 2
         center_y = self.generator.layers / 2
         center_z = self.generator.size / 2
@@ -417,6 +426,11 @@ class IsometricVisualizer:
             angle=45.0,
             pitch=30.0
         )
+        
+        # Set camera constraints based on scene size
+        max_dim = max(self.generator.size, self.generator.layers, self.generator.size)
+        self.camera.min_distance = max_dim * 0.5
+        self.camera.max_distance = max_dim * 5.0
     
     def _create_projection_matrix(self):
         """
