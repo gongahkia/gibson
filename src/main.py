@@ -138,13 +138,16 @@ class CellType(Enum):
     cell types
     """
     EMPTY = 0
-    VERTICAL = 1    
-    HORIZONTAL = 2  
-    BRIDGE = 3     
-    FACADE = 4     
+    VERTICAL = 1
+    HORIZONTAL = 2
+    BRIDGE = 3
+    FACADE = 4
     STAIR = 5
-
-class MaterialType(Enum):
+    PIPE = 6
+    ANTENNA = 7
+    CABLE = 8
+    VENT = 9
+    ELEVATOR = 10class MaterialType(Enum):
     """
     material types for rendering with PBR-like properties
     """
@@ -155,6 +158,16 @@ class MaterialType(Enum):
     RUST = 4
     STEEL = 5
 
+class DistrictType(Enum):
+    """
+    district/biome types for varied architectural zones
+    """
+    INDUSTRIAL = 0
+    RESIDENTIAL = 1
+    COMMERCIAL = 2
+    SLUM = 3
+    ELITE = 4
+
 # Mapping of CellTypes to their primary materials
 CELL_TO_MATERIAL = {
     CellType.EMPTY: MaterialType.CONCRETE,
@@ -163,6 +176,11 @@ CELL_TO_MATERIAL = {
     CellType.BRIDGE: MaterialType.STEEL,
     CellType.FACADE: MaterialType.GLASS,
     CellType.STAIR: MaterialType.METAL,
+    CellType.PIPE: MaterialType.RUST,
+    CellType.ANTENNA: MaterialType.METAL,
+    CellType.CABLE: MaterialType.STEEL,
+    CellType.VENT: MaterialType.METAL,
+    CellType.ELEVATOR: MaterialType.GLASS,
 }
 
 @dataclass
@@ -221,6 +239,51 @@ MATERIAL_PROPERTIES = {
         alpha=1.0
     ),
 }
+
+# District properties defining generation parameters
+DISTRICT_PROPERTIES = {
+    DistrictType.INDUSTRIAL: {
+        'color_palette': [(0.4, 0.4, 0.45), (0.5, 0.5, 0.5), (0.3, 0.3, 0.35)],
+        'core_density': 1.2,  # More vertical cores
+        'floor_thickness': 2,
+        'vertical_variation': 0.3,
+        'material_weights': {MaterialType.METAL: 0.4, MaterialType.STEEL: 0.3, MaterialType.CONCRETE: 0.3},
+        'neon_probability': 0.1,
+    },
+    DistrictType.RESIDENTIAL: {
+        'color_palette': [(0.65, 0.6, 0.55), (0.7, 0.65, 0.6), (0.6, 0.55, 0.5)],
+        'core_density': 0.8,
+        'floor_thickness': 1,
+        'vertical_variation': 0.5,
+        'material_weights': {MaterialType.CONCRETE: 0.5, MaterialType.GLASS: 0.3, MaterialType.FACADE: 0.2},
+        'neon_probability': 0.2,
+    },
+    DistrictType.COMMERCIAL: {
+        'color_palette': [(0.2, 0.3, 0.4), (0.3, 0.4, 0.5), (0.1, 0.2, 0.3)],
+        'core_density': 0.6,
+        'floor_thickness': 3,
+        'vertical_variation': 0.8,  # Tall towers
+        'material_weights': {MaterialType.GLASS: 0.6, MaterialType.STEEL: 0.2, MaterialType.CONCRETE: 0.2},
+        'neon_probability': 0.4,
+    },
+    DistrictType.SLUM: {
+        'color_palette': [(0.4, 0.35, 0.3), (0.5, 0.4, 0.35), (0.45, 0.4, 0.35)],
+        'core_density': 1.5,  # Dense, chaotic
+        'floor_thickness': 1,
+        'vertical_variation': 0.2,  # Low-rise
+        'material_weights': {MaterialType.RUST: 0.4, MaterialType.CONCRETE: 0.4, MaterialType.METAL: 0.2},
+        'neon_probability': 0.05,
+    },
+    DistrictType.ELITE: {
+        'color_palette': [(0.8, 0.8, 0.85), (0.75, 0.75, 0.8), (0.7, 0.75, 0.8)],
+        'core_density': 0.4,  # Spacious
+        'floor_thickness': 3,
+        'vertical_variation': 0.9,  # Very tall
+        'material_weights': {MaterialType.GLASS: 0.5, MaterialType.STEEL: 0.3, MaterialType.CONCRETE: 0.2},
+        'neon_probability': 0.3,
+    },
+}
+
 class MegaStructureGenerator:
 
     def __init__(self, size=30, layers=15, seed=None):
@@ -234,6 +297,44 @@ class MegaStructureGenerator:
         self.connections = []
         self.rooms = []
         self.support_map = np.zeros((size, size, layers), dtype=bool)
+        
+        # District/biome system
+        self.district_map = np.zeros((size, size), dtype=int)
+        self._generate_district_map()
+
+    def _generate_district_map(self):
+        """
+        generate noise-based district zoning map
+        """
+        # Use multiple octaves of Perlin noise for organic district boundaries
+        for x in range(self.size):
+            for z in range(self.size):
+                # Combine multiple noise frequencies
+                noise_val = (
+                    pnoise3(x * 0.05, z * 0.05, 0.0) * 1.0 +
+                    pnoise3(x * 0.1, z * 0.1, 1.0) * 0.5 +
+                    pnoise3(x * 0.2, z * 0.2, 2.0) * 0.25
+                )
+                
+                # Map noise to district types
+                if noise_val < -0.3:
+                    self.district_map[x][z] = DistrictType.SLUM.value
+                elif noise_val < -0.1:
+                    self.district_map[x][z] = DistrictType.INDUSTRIAL.value
+                elif noise_val < 0.1:
+                    self.district_map[x][z] = DistrictType.RESIDENTIAL.value
+                elif noise_val < 0.3:
+                    self.district_map[x][z] = DistrictType.COMMERCIAL.value
+                else:
+                    self.district_map[x][z] = DistrictType.ELITE.value
+    
+    def _get_district(self, x, z):
+        """
+        get district type at given coordinates
+        """
+        if 0 <= x < self.size and 0 <= z < self.size:
+            return DistrictType(self.district_map[x][z])
+        return DistrictType.RESIDENTIAL  # Default
 
     def generate_mega(self):
         """
@@ -252,25 +353,40 @@ class MegaStructureGenerator:
         self._add_support_pillars()
         self._add_secondary_structures()
         self._create_sky_bridges()
+        self._add_infrastructure_details()  # Feature 7
+        self._add_structural_variety()  # Feature 8
 
     def _create_vertical_cores(self):
         """
-        generate vertical cores
+        generate vertical cores with district-specific density
         """
-        core_spacing = random.randint(4, 6)
-        for x in range(0, self.size, core_spacing):
-            for z in range(0, self.size, core_spacing):
-                if random.random() < 0.8:
-                    height = min(random.randint(8, self.layers-2), self.layers)
-                    self._build_vertical_core(x, z, height)
+        for x in range(0, self.size):
+            for z in range(0, self.size):
+                district = self._get_district(x, z)
+                district_props = DISTRICT_PROPERTIES[district]
+                
+                # Adjust core spacing based on district density
+                base_probability = 0.15 * district_props['core_density']
+                
+                if random.random() < base_probability:
+                    # Height varies by district
+                    height_range = int(self.layers * district_props['vertical_variation'])
+                    min_height = max(5, self.layers - height_range)
+                    height = random.randint(min_height, self.layers - 2)
+                    self._build_vertical_core(x, z, height, district)
 
-    def _build_vertical_core(self, x, z, height):
+    def _build_vertical_core(self, x, z, height, district=None):
         """
-        build a vertical core
+        build a vertical core with district-specific characteristics
         """
-        base_width = random.randint(2, 3)
+        if district is None:
+            district = self._get_district(x, z)
+        
+        district_props = DISTRICT_PROPERTIES[district]
+        base_width = random.randint(1, 2) if district == DistrictType.SLUM else random.randint(2, 3)
+        
         for y in range(height):
-            current_width = max(1, base_width - int(y/4))
+            current_width = max(1, base_width - int(y/5))
             for dx in range(-current_width, current_width+1):
                 for dz in range(-current_width, current_width+1):
                     nx, nz = x+dx, z+dz
@@ -470,6 +586,155 @@ class MegaStructureGenerator:
         if y > 0 and self.grid[x][z][y-1] in [CellType.VERTICAL, CellType.BRIDGE]:
             return True
         return False
+    
+    def _add_infrastructure_details(self):
+        """
+        Feature 7: Add visible infrastructure systems
+        """
+        self._add_pipe_networks()
+        self._add_rooftop_details()
+        self._add_external_elevators()
+        self._add_cable_connections()
+    
+    def _add_pipe_networks(self):
+        """
+        Add pipe networks between buildings
+        """
+        for _ in range(int(self.size * self.layers * 0.03)):
+            x, z = random.randint(0, self.size-1), random.randint(0, self.size-1)
+            y = random.randint(1, self.layers-2)
+            
+            if self.grid[x][z][y] in [CellType.VERTICAL, CellType.HORIZONTAL]:
+                # Run pipes horizontally along structures
+                direction = random.choice([(1,0), (-1,0), (0,1), (0,-1)])
+                length = random.randint(3, 8)
+                
+                for i in range(length):
+                    nx = x + direction[0] * i
+                    nz = z + direction[1] * i
+                    if 0 <= nx < self.size and 0 <= nz < self.size:
+                        if self.grid[nx][nz][y] == CellType.EMPTY:
+                            self.grid[nx][nz][y] = CellType.PIPE
+    
+    def _add_rooftop_details(self):
+        """
+        Add antennas, vents, and equipment to rooftops
+        """
+        for x in range(self.size):
+            for z in range(self.size):
+                # Find rooftop (highest non-empty cell)
+                for y in range(self.layers-1, -1, -1):
+                    if self.grid[x][z][y] != CellType.EMPTY:
+                        # Add antenna or vent
+                        if random.random() < 0.15 and y < self.layers - 1:
+                            detail_type = random.choice([CellType.ANTENNA, CellType.VENT])
+                            height = random.randint(1, 3)
+                            for dy in range(1, height + 1):
+                                if y + dy < self.layers:
+                                    self.grid[x][z][y + dy] = detail_type
+                        break
+    
+    def _add_external_elevators(self):
+        """
+        Add external elevator shafts on building faces
+        """
+        cores = [(x, z) for x in range(self.size) for z in range(self.size)
+                if any(self.grid[x][z][y] == CellType.VERTICAL for y in range(self.layers))]
+        
+        for x, z in cores:
+            if random.random() < 0.2:  # 20% of cores get elevators
+                # Find a free adjacent position
+                for dx, dz in [(1,0), (-1,0), (0,1), (0,-1)]:
+                    nx, nz = x + dx, z + dz
+                    if 0 <= nx < self.size and 0 <= nz < self.size:
+                        # Build elevator shaft upward
+                        for y in range(self.layers):
+                            if self.grid[nx][nz][y] == CellType.EMPTY:
+                                if y == 0 or self.grid[nx][nz][y-1] in [CellType.ELEVATOR, CellType.HORIZONTAL, CellType.VERTICAL]:
+                                    self.grid[nx][nz][y] = CellType.ELEVATOR
+                        break
+    
+    def _add_cable_connections(self):
+        """
+        Add cable lines between buildings
+        """
+        for _ in range(int(self.size * 0.5)):
+            # Find two random vertical structures
+            cores = [(x, z, y) for x in range(self.size) for z in range(self.size) for y in range(self.layers)
+                    if self.grid[x][z][y] == CellType.VERTICAL]
+            
+            if len(cores) >= 2:
+                start_x, start_z, start_y = random.choice(cores)
+                end_x, end_z, end_y = random.choice(cores)
+                
+                if abs(start_x - end_x) + abs(start_z - end_z) < 15:  # Not too far
+                    # Simple line between points
+                    cable_y = min(start_y, end_y) + random.randint(1, 3)
+                    if cable_y < self.layers:
+                        # Draw cable along path
+                        steps = max(abs(end_x - start_x), abs(end_z - start_z))
+                        if steps > 0:
+                            for i in range(steps + 1):
+                                t = i / steps
+                                cx = int(start_x + (end_x - start_x) * t)
+                                cz = int(start_z + (end_z - start_z) * t)
+                                if 0 <= cx < self.size and 0 <= cz < self.size:
+                                    if self.grid[cx][cz][cable_y] == CellType.EMPTY:
+                                        self.grid[cx][cz][cable_y] = CellType.CABLE
+    
+    def _add_structural_variety(self):
+        """
+        Feature 8: Add organic chaos and variety
+        """
+        self._add_random_missing_sections()
+        self._add_makeshift_additions()
+        self._add_decay_and_overgrowth()
+    
+    def _add_random_missing_sections(self):
+        """
+        Remove random sections to simulate decay/damage
+        """
+        for _ in range(int(self.size * self.layers * 0.02)):
+            x = random.randint(0, self.size-1)
+            z = random.randint(0, self.size-1)
+            y = random.randint(2, self.layers-2)
+            
+            # Create small gaps
+            radius = random.randint(1, 2)
+            for dx in range(-radius, radius+1):
+                for dz in range(-radius, radius+1):
+                    nx, nz = x + dx, z + dz
+                    if 0 <= nx < self.size and 0 <= nz < self.size:
+                        if self.grid[nx][nz][y] not in [CellType.VERTICAL, CellType.EMPTY]:
+                            self.grid[nx][nz][y] = CellType.EMPTY
+    
+    def _add_makeshift_additions(self):
+        """
+        Add chaotic, shanty-style additions
+        """
+        slum_areas = [(x, z) for x in range(self.size) for z in range(self.size)
+                     if self._get_district(x, z) == DistrictType.SLUM]
+        
+        for x, z in slum_areas:
+            if random.random() < 0.1:
+                # Find existing structure
+                for y in range(self.layers):
+                    if self.grid[x][z][y] in [CellType.HORIZONTAL, CellType.FACADE]:
+                        # Add small chaotic extension
+                        for dx, dz in [(1,0), (-1,0), (0,1), (0,-1)]:
+                            nx, nz = x + dx, z + dz
+                            if 0 <= nx < self.size and 0 <= nz < self.size:
+                                if self.grid[nx][nz][y] == CellType.EMPTY and random.random() < 0.6:
+                                    self.grid[nx][nz][y] = CellType.FACADE
+                        break
+    
+    def _add_decay_and_overgrowth(self):
+        """
+        Add visual decay markers (change materials via noise)
+        """
+        # This will be reflected in material selection during rendering
+        # For now, just mark certain cells for future material variation
+        pass
 
     def save_structure(self, filename):
         """
@@ -512,7 +777,7 @@ class IsometricVisualizer:
         self.seed = generator.seed  # Store seed for display
         self.init_pygame()
         self._init_font_system()
-        self.debug_surface = pygame.Surface((200, 270), pygame.SRCALPHA).convert_alpha()
+        self.debug_surface = pygame.Surface((200, 450), pygame.SRCALPHA).convert_alpha()
         self._create_shaders()
         self._create_projection_matrix()
         self._init_camera()
@@ -520,6 +785,10 @@ class IsometricVisualizer:
         # Mouse interaction state
         self.mouse_dragging = False
         self.last_mouse_pos = None
+        
+        # Feature 10: Interactive inspection mode
+        self.selected_cell = None  # (x, y, z) tuple
+        self.inspection_mode = False
     
     def _init_camera(self):
         """initialize camera with proper positioning and constraints"""
@@ -1013,6 +1282,95 @@ class IsometricVisualizer:
         Kept for reference, will be removed in future cleanup
         """
         pass
+    
+    def _ray_cast_from_mouse(self, mouse_pos):
+        """
+        Feature 10: Cast ray from mouse position into 3D world
+        Returns (x, y, z) of clicked cell or None
+        """
+        # Convert mouse to normalized device coordinates
+        x_ndc = (2.0 * mouse_pos[0]) / self.display[0] - 1.0
+        y_ndc = 1.0 - (2.0 * mouse_pos[1]) / self.display[1]
+        
+        # Ray in clip space
+        ray_clip = glm.vec4(x_ndc, y_ndc, -1.0, 1.0)
+        
+        # Ray in eye space
+        ray_eye = glm.inverse(self.projection) * ray_clip
+        ray_eye = glm.vec4(ray_eye.x, ray_eye.y, -1.0, 0.0)
+        
+        # Ray in world space
+        view = self.camera.get_view_matrix()
+        ray_world = glm.inverse(view) * ray_eye
+        ray_dir = glm.normalize(glm.vec3(ray_world.x, ray_world.y, ray_world.z))
+        
+        # Ray origin is camera position
+        ray_origin = self.camera.position
+        
+        # March along ray and test voxel grid
+        return self._march_ray(ray_origin, ray_dir)
+    
+    def _march_ray(self, origin, direction, max_distance=100.0):
+        """
+        March along ray to find first intersection with voxel grid
+        """
+        step_size = 0.5
+        current_pos = glm.vec3(origin)
+        
+        for _ in range(int(max_distance / step_size)):
+            current_pos += direction * step_size
+            
+            # Convert to grid coordinates
+            x = int(round(current_pos.x))
+            y = int(round(current_pos.y))
+            z = int(round(current_pos.z))
+            
+            # Check if in bounds
+            if (0 <= x < self.generator.size and 
+                0 <= y < self.generator.layers and 
+                0 <= z < self.generator.size):
+                
+                # Check if cell is occupied
+                if self.generator.grid[x][z][y] != CellType.EMPTY:
+                    return (x, y, z)
+        
+        return None
+    
+    def _get_cell_info(self, pos):
+        """
+        Get detailed information about a cell
+        """
+        if pos is None:
+            return None
+        
+        x, y, z = pos
+        if not (0 <= x < self.generator.size and 
+                0 <= y < self.generator.layers and 
+                0 <= z < self.generator.size):
+            return None
+        
+        cell_type = self.generator.grid[x][z][y]
+        district = self.generator._get_district(x, z)
+        material = CELL_TO_MATERIAL.get(cell_type, MaterialType.CONCRETE)
+        
+        # Count connected cells
+        connected = 0
+        for dx, dy, dz in [(-1,0,0), (1,0,0), (0,-1,0), (0,1,0), (0,0,-1), (0,0,1)]:
+            nx, ny, nz = x+dx, y+dy, z+dz
+            if (0 <= nx < self.generator.size and 
+                0 <= ny < self.generator.layers and 
+                0 <= nz < self.generator.size):
+                if self.generator.grid[nx][nz][ny] != CellType.EMPTY:
+                    connected += 1
+        
+        return {
+            'position': (x, y, z),
+            'cell_type': cell_type,
+            'material': material,
+            'district': district,
+            'connected_cells': connected,
+            'has_support': self.generator._has_support(x, y, z) if y > 0 else True
+        }
 
     def render_debug_panel(self):
         """
@@ -1039,6 +1397,10 @@ class IsometricVisualizer:
             ("P: Toggle", (0.8, 0.8, 0.8)),
             ("[/]: Fog", (0.8, 0.8, 0.8)),
             ("-/=: Bloom", (0.8, 0.8, 0.8)),
+            ("", None),
+            ("INSPECT", None),
+            ("I: Toggle", (0.8, 0.8, 0.8)),
+            ("Click: Select", (0.8, 0.8, 0.8)),
         ]
         for text, color in legend_items:
             if color is None:
@@ -1065,6 +1427,31 @@ class IsometricVisualizer:
         if self.seed:
             seed_text = self.font.render(f"Seed: {self.seed}", True, (255, 255, 0))
             self.debug_surface.blit(seed_text, (10, y_offset))
+            y_offset += 30
+        
+        # Feature 10: Display inspection info
+        if self.inspection_mode and self.selected_cell:
+            info = self._get_cell_info(self.selected_cell)
+            if info:
+                y_offset += 10
+                header = self.font.render("INSPECT", True, (255, 255, 128))
+                self.debug_surface.blit(header, (10, y_offset))
+                y_offset += 25
+                
+                pos_text = self.font.render(f"Pos: {info['position']}", True, (200, 200, 200))
+                self.debug_surface.blit(pos_text, (10, y_offset))
+                y_offset += 20
+                
+                type_text = self.font.render(f"Type: {info['cell_type'].name}", True, (200, 200, 200))
+                self.debug_surface.blit(type_text, (10, y_offset))
+                y_offset += 20
+                
+                dist_text = self.font.render(f"Zone: {info['district'].name}", True, (200, 200, 200))
+                self.debug_surface.blit(dist_text, (10, y_offset))
+                y_offset += 20
+                
+                conn_text = self.font.render(f"Links: {info['connected_cells']}", True, (200, 200, 200))
+                self.debug_surface.blit(conn_text, (10, y_offset))
 
     def render(self):
         """
@@ -1183,14 +1570,14 @@ class IsometricVisualizer:
         glBindTexture(GL_TEXTURE_2D, texture)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 200, 330, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 200, 450, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
         glEnable(GL_TEXTURE_2D)
         glColor4f(1, 1, 1, 1)
         glBegin(GL_QUADS)
         glTexCoord2f(0, 1); glVertex2f(self.display[0]-200, 0)
         glTexCoord2f(1, 1); glVertex2f(self.display[0], 0)
-        glTexCoord2f(1, 0); glVertex2f(self.display[0], 330)
-        glTexCoord2f(0, 0); glVertex2f(self.display[0]-200, 330)
+        glTexCoord2f(1, 0); glVertex2f(self.display[0], 450)
+        glTexCoord2f(0, 0); glVertex2f(self.display[0]-200, 450)
         glEnd()
         glDisable(GL_TEXTURE_2D)
         glDeleteTextures([texture])
@@ -1280,15 +1667,32 @@ class IsometricVisualizer:
                 self.bloom_intensity = min(2.0, self.bloom_intensity + 0.1)
                 print(f"Bloom intensity: {self.bloom_intensity:.2f}")
             
+            # Press 'I' to toggle inspection mode (Feature 10)
+            if keys[pygame.K_i]:
+                self.inspection_mode = not self.inspection_mode
+                status = "enabled" if self.inspection_mode else "disabled"
+                print(f"Inspection mode {status}")
+                if not self.inspection_mode:
+                    self.selected_cell = None
+                pygame.time.wait(300)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:  # LMB - start drag or quick rotate
-                        self.mouse_dragging = True
-                        self.last_mouse_pos = pygame.mouse.get_pos()
-                        self.drag_start_time = pygame.time.get_ticks()
+                    if event.button == 1:  # LMB
+                        if self.inspection_mode:
+                            # Ray cast to select cell
+                            mouse_pos = pygame.mouse.get_pos()
+                            self.selected_cell = self._ray_cast_from_mouse(mouse_pos)
+                            if self.selected_cell:
+                                print(f"Selected cell: {self.selected_cell}")
+                        else:
+                            # Normal camera drag
+                            self.mouse_dragging = True
+                            self.last_mouse_pos = pygame.mouse.get_pos()
+                            self.drag_start_time = pygame.time.get_ticks()
                     elif event.button == 3:  # RMB - smooth rotate right
                         self.camera.rotate(45.0)
                     elif event.button == 4:  # Mouse wheel up - zoom in smoothly
