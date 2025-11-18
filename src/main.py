@@ -542,7 +542,7 @@ class IsometricVisualizer:
     
     def _create_shaders(self):
         """
-        create vertex and fragment shaders for modern rendering with instancing
+        create vertex and fragment shaders with material support
         """
         vertex_shader = """
         #version 330 core
@@ -551,39 +551,65 @@ class IsometricVisualizer:
         uniform mat4 projection;
         
         in vec3 in_position;
-        in vec3 in_offset;      // Per-instance position
-        in vec3 in_color;       // Per-instance color
+        in vec3 in_offset;         // Per-instance position
+        in vec3 in_color;          // Per-instance base color
+        in float in_metallic;      // Per-instance metallic value
+        in float in_roughness;     // Per-instance roughness value
+        in float in_emission;      // Per-instance emission strength
         
+        out vec3 frag_pos;
         out vec3 frag_color;
+        out float frag_metallic;
+        out float frag_roughness;
+        out float frag_emission;
         
         void main() {
             vec3 world_pos = in_position + in_offset;
             gl_Position = projection * view * vec4(world_pos, 1.0);
+            frag_pos = world_pos;
             frag_color = in_color;
+            frag_metallic = in_metallic;
+            frag_roughness = in_roughness;
+            frag_emission = in_emission;
         }
         """
         
         fragment_shader = """
         #version 330 core
         
+        in vec3 frag_pos;
         in vec3 frag_color;
+        in float frag_metallic;
+        in float frag_roughness;
+        in float frag_emission;
+        
         out vec4 out_color;
         
         void main() {
-            // Calculate simple lighting based on position
+            // Simple PBR-inspired lighting
             vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
-            float ambient = 0.4;
-            float diffuse = 0.6;
+            vec3 view_dir = normalize(-frag_pos);
+            vec3 normal = normalize(cross(dFdx(frag_pos), dFdy(frag_pos)));
+            vec3 halfway = normalize(light_dir + view_dir);
             
-            // Simple fake normal based on color variation
-            vec3 normal = normalize(vec3(
-                frag_color.r - 0.5,
-                frag_color.g - 0.5,
-                frag_color.b - 0.5
-            ));
+            // Ambient
+            float ambient = 0.3;
             
-            float light = ambient + diffuse * max(dot(normal, light_dir), 0.0);
-            vec3 lit_color = frag_color * light;
+            // Diffuse
+            float diff = max(dot(normal, light_dir), 0.0);
+            diff = mix(diff, diff * 0.5 + 0.5, frag_metallic);
+            
+            // Specular (affected by roughness and metallic)
+            float spec_power = mix(32.0, 4.0, frag_roughness);
+            float spec = pow(max(dot(normal, halfway), 0.0), spec_power);
+            spec *= (1.0 - frag_roughness) * mix(0.2, 1.0, frag_metallic);
+            
+            // Combine lighting
+            vec3 lit_color = frag_color * (ambient + diff * 0.7);
+            lit_color += vec3(spec) * mix(vec3(1.0), frag_color, frag_metallic);
+            
+            // Add emission
+            lit_color += frag_color * frag_emission;
             
             out_color = vec4(lit_color, 1.0);
         }
