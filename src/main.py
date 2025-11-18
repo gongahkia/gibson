@@ -1683,7 +1683,8 @@ class IsometricVisualizer:
             "Controls:",
             "Mouse Drag: Rotate | Wheel: Zoom",
             "WASD: Pan | 1-5: Camera Presets",
-            "R: Regenerate | ESC/Q: Quit"
+            "R: Regenerate | ESC/Q: Quit",
+            "F/G: Fog -/+ | P: Bloom Toggle"
         ]
         y_offset = 50
         for line in controls:
