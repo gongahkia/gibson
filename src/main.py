@@ -306,6 +306,14 @@ class IsometricVisualizer:
         self._init_font_system()
         self.debug_surface = pygame.Surface((200, 180), pygame.SRCALPHA).convert_alpha()
         self._create_shaders()
+        self._create_projection_matrix()
+    
+    def _create_projection_matrix(self):
+        """
+        create perspective projection matrix
+        """
+        aspect_ratio = self.display[0] / self.display[1]
+        self.projection = glm.perspective(glm.radians(45.0), aspect_ratio, 0.1, 1000.0)
     
     def _create_shaders(self):
         """
