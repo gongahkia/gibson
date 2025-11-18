@@ -1001,6 +1001,8 @@ class IsometricVisualizer:
         
         self.instance_count = len(instance_positions)
         
+        print(f"DEBUG: Prepared {self.instance_count} cube instances")
+        
         if self.instance_count > 0:
             positions_array = np.array(instance_positions, dtype='f4')
             colors_array = np.array(instance_colors, dtype='f4')
