@@ -1194,12 +1194,12 @@ class IsometricVisualizer:
         self.fog_height_falloff = 0.05  # Lower values = more ground-level fog
         
         # Bloom parameters
-        self.bloom_threshold = 0.8  # Brightness threshold for bloom extraction
-        self.bloom_intensity = 0.5  # Bloom strength
-        self.blur_iterations = 3  # Number of blur passes per direction
+        self.bloom_threshold = 1.5  # Higher threshold - only very bright things bloom
+        self.bloom_intensity = 0.2  # Reduced bloom strength
+        self.blur_iterations = 2  # Fewer blur passes
         
         # Post-processing toggle
-        self.enable_postprocessing = True
+        self.enable_postprocessing = False  # Disabled by default for clearer colors
         
         print("Post-processing quad initialized")
     
