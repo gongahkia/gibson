@@ -1555,43 +1555,14 @@ class IsometricVisualizer:
     
     def _render_ui_overlay(self):
         """
-        render UI overlay using legacy OpenGL for 2D elements
+        render UI overlay - temporarily disabled for Core Profile compatibility
+        TODO: Implement proper ModernGL UI rendering
         """
-        glMatrixMode(GL_PROJECTION)
-        glPushMatrix()
-        glLoadIdentity()
-        glOrtho(0, self.display[0], self.display[1], 0, -1, 1)
-        glMatrixMode(GL_MODELVIEW)
-        glPushMatrix()
-        glLoadIdentity()
-        glDisable(GL_DEPTH_TEST)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        
+        # Render debug panel to surface (for future use)
         self.render_debug_panel()
-        tex_data = pygame.image.tostring(self.debug_surface, "RGBA", True)
-        texture = glGenTextures(1)
-        glBindTexture(GL_TEXTURE_2D, texture)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 200, 450, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
-        glEnable(GL_TEXTURE_2D)
-        glColor4f(1, 1, 1, 1)
-        glBegin(GL_QUADS)
-        glTexCoord2f(0, 1); glVertex2f(self.display[0]-200, 0)
-        glTexCoord2f(1, 1); glVertex2f(self.display[0], 0)
-        glTexCoord2f(1, 0); glVertex2f(self.display[0], 450)
-        glTexCoord2f(0, 0); glVertex2f(self.display[0]-200, 450)
-        glEnd()
-        glDisable(GL_TEXTURE_2D)
-        glDeleteTextures([texture])
         
-        glMatrixMode(GL_PROJECTION)
-        glPopMatrix()
-        glMatrixMode(GL_MODELVIEW)
-        glPopMatrix()
-        glEnable(GL_DEPTH_TEST)
-        glDisable(GL_BLEND)
+        # UI rendering disabled - info printed to console instead
+        pass
 
     def run(self):
         """
