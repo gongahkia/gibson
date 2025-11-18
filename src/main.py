@@ -686,10 +686,21 @@ class IsometricVisualizer:
 
     def run(self):
         """
-        run the visualizer with smooth camera controls and mouse drag
+        run the visualizer with smooth camera controls, mouse drag, and keyboard panning
         """
         clock = pygame.time.Clock()
         while True:
+            # Handle keyboard panning (WASD keys)
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_w]:
+                self.camera.pan(0, 1)
+            if keys[pygame.K_s]:
+                self.camera.pan(0, -1)
+            if keys[pygame.K_a]:
+                self.camera.pan(-1, 0)
+            if keys[pygame.K_d]:
+                self.camera.pan(1, 0)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
