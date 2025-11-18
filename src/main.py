@@ -73,8 +73,10 @@ class Camera:
         self.target_pitch += delta_pitch
     
     def zoom(self, delta):
-        """set target zoom"""
-        self.target_distance = glm.clamp(self.target_distance + delta, 5.0, 200.0)
+        """set target zoom with improved range"""
+        min_dist = max(self.target.x, self.target.y, self.target.z) * 0.3
+        max_dist = max(self.target.x, self.target.y, self.target.z) * 4.0
+        self.target_distance = glm.clamp(self.target_distance + delta, min_dist, max_dist)
     
     def pan(self, dx, dy):
         """pan camera target"""
@@ -699,10 +701,10 @@ class IsometricVisualizer:
                         self.drag_start_time = pygame.time.get_ticks()
                     elif event.button == 3:  # RMB - smooth rotate right
                         self.camera.rotate(45.0)
-                    elif event.button == 4:  # Mouse wheel up - zoom in
-                        self.camera.zoom(-5.0)
-                    elif event.button == 5:  # Mouse wheel down - zoom out
-                        self.camera.zoom(5.0)
+                    elif event.button == 4:  # Mouse wheel up - zoom in smoothly
+                        self.camera.zoom(-3.0)
+                    elif event.button == 5:  # Mouse wheel down - zoom out smoothly
+                        self.camera.zoom(3.0)
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
                         # If click was quick (no drag), rotate left
