@@ -1568,6 +1568,13 @@ class IsometricVisualizer:
             # Calculate view matrix from camera
             view = self._calculate_view_matrix()
             
+            # Debug: Print once
+            if not hasattr(self, '_debug_printed'):
+                print(f"DEBUG: Rendering {self.instance_count} instances")
+                print(f"DEBUG: Camera position: {self.camera.position}")
+                print(f"DEBUG: Camera target: {self.camera.target}")
+                self._debug_printed = True
+            
             # Set uniforms efficiently (convert PyGLM matrices to bytes for moderngl)
             self.shader_program['view'].write(view.to_bytes())
             self.shader_program['projection'].write(self.projection.to_bytes())
