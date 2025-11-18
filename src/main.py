@@ -874,58 +874,21 @@ class IsometricVisualizer:
         layout(location = 0) out vec4 out_color;
         layout(location = 1) out vec4 out_world_pos;  // For height-based fog
         
-        // Schlick's approximation for Fresnel reflectance
-        vec3 fresnelSchlick(float cosTheta, vec3 F0) {
-            return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-        }
-        
         void main() {
-            // Calculate surface normal from derivatives
+            // Calculate surface normal from derivatives for simple lighting
             vec3 normal = normalize(cross(dFdx(frag_pos), dFdy(frag_pos)));
             
-            // Light setup
+            // Simple directional light for depth perception
             vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
-            vec3 light_color = vec3(1.0, 0.98, 0.95);
+            float light_intensity = max(dot(normal, light_dir), 0.0);
             
-            // View direction
-            vec3 view_dir = normalize(vec3(0.0) - frag_pos);
-            vec3 halfway = normalize(light_dir + view_dir);
-            
-            // PBR calculations
-            float NdotL = max(dot(normal, light_dir), 0.0);
-            float NdotV = max(dot(normal, view_dir), 0.0);
-            float NdotH = max(dot(normal, halfway), 0.0);
-            
-            // Ambient occlusion approximation
-            float ao = 0.3 + 0.7 * (frag_pos.y / 30.0);
-            
-            // Base reflectivity for dielectrics (0.04) vs metals (albedo)
-            vec3 F0 = mix(vec3(0.04), frag_color, frag_metallic);
-            vec3 F = fresnelSchlick(max(dot(halfway, view_dir), 0.0), F0);
-            
-            // Diffuse (Lambert)
-            vec3 kD = (vec3(1.0) - F) * (1.0 - frag_metallic);
-            vec3 diffuse = kD * frag_color / 3.14159;
-            
-            // Specular (Blinn-Phong approximation)
-            float specular_power = mix(128.0, 8.0, frag_roughness);
-            float specular = pow(NdotH, specular_power);
-            specular *= (specular_power + 2.0) / (2.0 * 3.14159);
-            vec3 specular_color = F * specular;
-            
-            // Combine lighting
-            vec3 ambient = vec3(0.15, 0.15, 0.18) * frag_color * ao;
-            vec3 radiance = (diffuse + specular_color) * light_color * NdotL;
-            vec3 final_color = ambient + radiance;
+            // Simple ambient + diffuse lighting (no fancy PBR)
+            vec3 ambient = frag_color * 0.4;  // Ambient light
+            vec3 diffuse = frag_color * light_intensity * 0.6;  // Diffuse light
+            vec3 final_color = ambient + diffuse;
             
             // Add emission for glowing materials
-            final_color += frag_color * frag_emission;
-            
-            // Tone mapping (simple Reinhard)
-            final_color = final_color / (final_color + vec3(1.0));
-            
-            // Gamma correction
-            final_color = pow(final_color, vec3(1.0/2.2));
+            final_color += frag_color * frag_emission * 0.5;
             
             // Apply alpha/transparency
             out_color = vec4(final_color, frag_alpha);
