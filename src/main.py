@@ -993,9 +993,22 @@ class IsometricVisualizer:
 
 # ----- EXECUTION CODE -----
 
+def generate_seed():
+    """generate a random 8-character alphanumeric seed"""
+    import string
+    import time
+    chars = string.ascii_uppercase + string.digits
+    # Use timestamp for uniqueness
+    random.seed(time.time())
+    return ''.join(random.choice(chars) for _ in range(8))
+
 if __name__ == '__main__':
-    print("Gibson: generating structure...")
-    generator = MegaStructureGenerator()
+    # Check for command-line seed argument
+    import sys
+    seed = sys.argv[1] if len(sys.argv) > 1 else generate_seed()
+    
+    print(f"Gibson: generating structure with seed: {seed}")
+    generator = MegaStructureGenerator(seed=seed)
     generator.generate_mega()
     generator.save_structure('structure.json')
     print("Gibson: visualizing structure...")
