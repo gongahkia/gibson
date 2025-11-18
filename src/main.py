@@ -1191,7 +1191,7 @@ class IsometricVisualizer:
         )
         
         # Set default fog parameters
-        self.fog_density = 0.3
+        self.fog_density = 0.0  # Disabled by default
         self.fog_color = (0.1, 0.1, 0.12)  # Dark blue-gray
         self.fog_height_falloff = 0.05  # Lower values = more ground-level fog
         
@@ -1630,6 +1630,11 @@ class IsometricVisualizer:
         self.ctx.screen.use()
         self.ctx.viewport = (0, 0, *self.display)
         self.ctx.clear(0.05, 0.05, 0.08, 1.0)
+        
+        # Debug once
+        if not hasattr(self, '_composite_debug'):
+            print(f"DEBUG: Composite pass - postprocessing={self.enable_postprocessing}, fog={self.fog_density}")
+            self._composite_debug = True
         
         # Bind all textures
         self.scene_color_texture.use(location=0)
