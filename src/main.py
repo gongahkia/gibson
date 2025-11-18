@@ -806,6 +806,25 @@ class IsometricVisualizer:
         except Exception as e:
             print(f"Font error: {e}")
             self.font = pygame.font.SysFont('Arial', 24)
+    
+    def _init_framebuffers(self):
+        """
+        initialize framebuffers for post-processing (offscreen rendering)
+        """
+        width, height = self.display
+        
+        # Main scene framebuffer - rendered scene will go here
+        self.scene_color_texture = self.ctx.texture((width, height), 4, dtype='f4')  # RGBA float
+        self.scene_depth_texture = self.ctx.depth_texture((width, height))
+        self.scene_fbo = self.ctx.framebuffer(
+            color_attachments=[self.scene_color_texture],
+            depth_attachment=self.scene_depth_texture
+        )
+        
+        # Configure texture filtering
+        self.scene_color_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        
+        print(f"Framebuffers initialized: {width}x{height}")
 
     def init_pygame(self):
         """
@@ -835,6 +854,9 @@ class IsometricVisualizer:
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         glMatrixMode(GL_MODELVIEW)
+        
+        # Initialize framebuffers for post-processing
+        self._init_framebuffers()
 
     def draw_cube(self, position, cell_type):
         """
