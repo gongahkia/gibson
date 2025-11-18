@@ -813,6 +813,11 @@ class IsometricVisualizer:
         """
         pygame.init()
         self.screen = pygame.display.set_mode((0, 0), DOUBLEBUF|OPENGL|pygame.FULLSCREEN)
+        
+        # Set window title with seed
+        seed_display = self.seed if self.seed else "NO-SEED"
+        pygame.display.set_caption(f"Gibson v2.0 - Seed: {seed_display}")
+        
         self.display = pygame.display.get_surface().get_size()
         
         # Initialize ModernGL context
