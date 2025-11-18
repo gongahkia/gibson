@@ -199,42 +199,42 @@ class Material:
 # Material definitions with properties
 MATERIAL_PROPERTIES = {
     MaterialType.CONCRETE: Material(
-        base_color=(0.6, 0.6, 0.65),
+        base_color=(0.5, 0.5, 0.6),  # Light gray-blue
         metallic=0.0,
         roughness=0.9,
         emission=0.0,
         alpha=1.0
     ),
     MaterialType.GLASS: Material(
-        base_color=(0.7, 0.85, 0.95),
+        base_color=(0.4, 0.7, 0.9),  # Bright blue
         metallic=0.0,
         roughness=0.1,
         emission=0.0,
         alpha=0.3
     ),
     MaterialType.METAL: Material(
-        base_color=(0.7, 0.7, 0.75),
+        base_color=(0.6, 0.6, 0.7),  # Silver
         metallic=0.8,
         roughness=0.4,
         emission=0.0,
         alpha=1.0
     ),
     MaterialType.NEON: Material(
-        base_color=(0.1, 0.9, 0.9),
+        base_color=(0.1, 0.9, 0.9),  # Bright cyan
         metallic=0.0,
         roughness=0.2,
         emission=2.0,
         alpha=1.0
     ),
     MaterialType.RUST: Material(
-        base_color=(0.7, 0.4, 0.2),
+        base_color=(0.8, 0.4, 0.2),  # Orange-brown
         metallic=0.5,
         roughness=0.8,
         emission=0.0,
         alpha=1.0
     ),
     MaterialType.STEEL: Material(
-        base_color=(0.5, 0.5, 0.6),
+        base_color=(0.4, 0.5, 0.6),  # Blue-gray
         metallic=0.9,
         roughness=0.3,
         emission=0.0,
@@ -245,7 +245,7 @@ MATERIAL_PROPERTIES = {
 # District properties defining generation parameters
 DISTRICT_PROPERTIES = {
     DistrictType.INDUSTRIAL: {
-        'color_palette': [(0.4, 0.4, 0.45), (0.5, 0.5, 0.5), (0.3, 0.3, 0.35)],
+        'color_palette': [(0.3, 0.3, 0.4), (0.4, 0.5, 0.5), (0.2, 0.3, 0.35)],
         'core_density': 1.2,  # More vertical cores
         'floor_thickness': 2,
         'vertical_variation': 0.3,
@@ -253,7 +253,7 @@ DISTRICT_PROPERTIES = {
         'neon_probability': 0.1,
     },
     DistrictType.RESIDENTIAL: {
-        'color_palette': [(0.65, 0.6, 0.55), (0.7, 0.65, 0.6), (0.6, 0.55, 0.5)],
+        'color_palette': [(0.6, 0.5, 0.4), (0.7, 0.6, 0.5), (0.5, 0.4, 0.3)],
         'core_density': 0.8,
         'floor_thickness': 1,
         'vertical_variation': 0.5,
@@ -883,8 +883,8 @@ class IsometricVisualizer:
             float light_intensity = max(dot(normal, light_dir), 0.0);
             
             // Simple ambient + diffuse lighting (no fancy PBR)
-            vec3 ambient = frag_color * 0.4;  // Ambient light
-            vec3 diffuse = frag_color * light_intensity * 0.6;  // Diffuse light
+            vec3 ambient = frag_color * 0.5;  // Stronger ambient to see colors better
+            vec3 diffuse = frag_color * light_intensity * 0.5;  // Diffuse light
             vec3 final_color = ambient + diffuse;
             
             // Add emission for glowing materials
