@@ -791,6 +791,9 @@ class IsometricVisualizer:
         # Feature 10: Interactive inspection mode
         self.selected_cell = None  # (x, y, z) tuple
         self.inspection_mode = False
+        
+        # UI state
+        self.show_legend = True  # Show legend by default
     
     def _init_camera(self):
         """initialize camera with proper positioning and constraints"""
@@ -1683,8 +1686,9 @@ class IsometricVisualizer:
             "Controls:",
             "Mouse Drag: Rotate | Wheel: Zoom",
             "WASD: Pan | 1-5: Camera Presets",
-            "R: Regenerate | ESC/Q: Quit",
-            "F/G: Fog -/+ | P: Bloom Toggle"
+            "R: Regenerate | S: Screenshot",
+            "F/G: Fog -/+ | P: Bloom | L: Legend",
+            "ESC/Q: Quit"
         ]
         y_offset = 50
         for line in controls:
@@ -1703,6 +1707,43 @@ class IsometricVisualizer:
         quit_y = self.display[1] - quit_bg.get_height() - 20
         overlay.blit(quit_bg, (quit_x, quit_y))
         overlay.blit(quit_text, (quit_x + 15, quit_y + 7))
+        
+        # Render material legend at bottom-left (if enabled)
+        if hasattr(self, 'show_legend') and self.show_legend:
+            legend_items = [
+                ("Material Legend:", None),
+                ("Concrete", (0.5, 0.5, 0.6)),
+                ("Glass", (0.4, 0.7, 0.9)),
+                ("Metal", (0.6, 0.6, 0.7)),
+                ("Rust", (0.8, 0.4, 0.2)),
+                ("Steel", (0.4, 0.5, 0.6)),
+                ("Neon", (0.1, 0.9, 0.9)),
+            ]
+            
+            legend_y = self.display[1] - 220
+            for item_name, color in legend_items:
+                if color is None:
+                    # Title
+                    text = self.font.render(item_name, True, (255, 255, 255, 240))
+                    text_bg = pygame.Surface((text.get_width() + 20, text.get_height() + 5), pygame.SRCALPHA)
+                    text_bg.fill((0, 0, 0, 180))
+                else:
+                    # Color swatch + label
+                    text = self.font.render(item_name, True, (200, 200, 200, 220))
+                    text_bg = pygame.Surface((text.get_width() + 45, text.get_height() + 5), pygame.SRCALPHA)
+                    text_bg.fill((0, 0, 0, 160))
+                    # Draw color swatch
+                    swatch = pygame.Surface((20, 20), pygame.SRCALPHA)
+                    swatch.fill(tuple(int(c * 255) for c in color) + (255,))
+                    overlay.blit(swatch, (15, legend_y + 2))
+                    overlay.blit(text_bg, (10, legend_y))
+                    overlay.blit(text, (40, legend_y + 2))
+                    legend_y += 25
+                    continue
+                    
+                overlay.blit(text_bg, (10, legend_y))
+                overlay.blit(text, (20, legend_y + 2))
+                legend_y += 30
         
         # Convert pygame surface to OpenGL texture and render
         texture_data = pygame.image.tostring(overlay, 'RGBA', True)
@@ -1814,6 +1855,14 @@ class IsometricVisualizer:
                     if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                         pygame.quit()
                         sys.exit()
+                    elif event.key == pygame.K_s:
+                        # Take screenshot
+                        self._take_screenshot()
+                    elif event.key == pygame.K_l:
+                        # Toggle legend
+                        self.show_legend = not self.show_legend
+                        status = "shown" if self.show_legend else "hidden"
+                        print(f"Legend {status}")
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # LMB
                         if self.inspection_mode:
