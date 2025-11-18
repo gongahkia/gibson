@@ -613,13 +613,17 @@ class IsometricVisualizer:
 
     def render(self):
         """
-        render the scene using moderngl
+        render the scene using moderngl with smooth camera
         """
+        # Update camera with delta time for smooth interpolation
+        dt = 1.0 / 60.0  # Assuming 60 FPS target
+        self.camera.update(dt)
+        
         # Clear buffers
         self.ctx.clear(0.1, 0.1, 0.1, 1.0)
         
         if hasattr(self, 'vao') and self.instance_count > 0:
-            # Calculate view matrix
+            # Calculate view matrix from camera
             view = self._calculate_view_matrix()
             
             # Set uniforms efficiently
