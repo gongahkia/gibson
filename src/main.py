@@ -1569,9 +1569,9 @@ class IsometricVisualizer:
             # Calculate view matrix from camera
             view = self._calculate_view_matrix()
             
-            # Set uniforms efficiently
-            self.shader_program['view'].write(glm.value_ptr(view))
-            self.shader_program['projection'].write(glm.value_ptr(self.projection))
+            # Set uniforms efficiently (convert PyGLM matrices to bytes for moderngl)
+            self.shader_program['view'].write(view.to_bytes())
+            self.shader_program['projection'].write(self.projection.to_bytes())
             
             # Render all instances in one draw call
             self.vao.render(instances=self.instance_count)
