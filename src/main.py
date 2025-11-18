@@ -1548,6 +1548,36 @@ class IsometricVisualizer:
                 
                 dist_text = self.font.render(f"Zone: {info['district'].name}", True, (200, 200, 200))
                 self.debug_surface.blit(dist_text, (10, y_offset))
+    
+    def _take_screenshot(self):
+        """
+        take a screenshot and save it with timestamp
+        """
+        import datetime
+        import os
+        
+        # Create screenshots directory if it doesn't exist
+        screenshot_dir = "../screenshots"
+        os.makedirs(screenshot_dir, exist_ok=True)
+        
+        # Generate filename with timestamp and seed
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{screenshot_dir}/gibson_{self.seed}_{timestamp}.png"
+        
+        # Read the framebuffer
+        width, height = self.display
+        pixels = self.ctx.screen.read(components=3)  # RGB
+        
+        # Convert to pygame surface
+        image = pygame.image.fromstring(pixels, (width, height), 'RGB')
+        
+        # Flip vertically (OpenGL to pygame coordinate conversion)
+        image = pygame.transform.flip(image, False, True)
+        
+        # Save the image
+        pygame.image.save(image, filename)
+        print(f"Screenshot saved: {filename}")
+
                 y_offset += 20
                 
                 conn_text = self.font.render(f"Links: {info['connected_cells']}", True, (200, 200, 200))
