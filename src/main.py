@@ -700,6 +700,7 @@ class IsometricVisualizer:
         instance_metallic = []
         instance_roughness = []
         instance_emission = []
+        instance_alpha = []
         
         for x in range(self.generator.size):
             for z in range(self.generator.size):
@@ -745,6 +746,7 @@ class IsometricVisualizer:
                         instance_metallic.append(material.metallic)
                         instance_roughness.append(varied_roughness)
                         instance_emission.append(material.emission)
+                        instance_alpha.append(material.alpha)
         
         self.instance_count = len(instance_positions)
         
@@ -754,12 +756,14 @@ class IsometricVisualizer:
             metallic_array = np.array(instance_metallic, dtype='f4')
             roughness_array = np.array(instance_roughness, dtype='f4')
             emission_array = np.array(instance_emission, dtype='f4')
+            alpha_array = np.array(instance_alpha, dtype='f4')
             
             self.instance_vbo = self.ctx.buffer(positions_array.tobytes())
             self.color_vbo = self.ctx.buffer(colors_array.tobytes())
             self.metallic_vbo = self.ctx.buffer(metallic_array.tobytes())
             self.roughness_vbo = self.ctx.buffer(roughness_array.tobytes())
             self.emission_vbo = self.ctx.buffer(emission_array.tobytes())
+            self.alpha_vbo = self.ctx.buffer(alpha_array.tobytes())
             
             # Create VAO with instancing and material data
             self.vao = self.ctx.vertex_array(
@@ -771,6 +775,7 @@ class IsometricVisualizer:
                     (self.metallic_vbo, '1f /i', 'in_metallic'),
                     (self.roughness_vbo, '1f /i', 'in_roughness'),
                     (self.emission_vbo, '1f /i', 'in_emission'),
+                    (self.alpha_vbo, '1f /i', 'in_alpha'),
                 ],
                 index_buffer=self.ibo
             )
