@@ -600,7 +600,8 @@ class IsometricVisualizer:
         in float frag_emission;
         in float frag_alpha;
         
-        out vec4 out_color;
+        layout(location = 0) out vec4 out_color;
+        layout(location = 1) out vec4 out_world_pos;  // For height-based fog
         
         // Schlick's approximation for Fresnel reflectance
         vec3 fresnelSchlick(float cosTheta, vec3 F0) {
@@ -657,6 +658,9 @@ class IsometricVisualizer:
             
             // Apply alpha/transparency
             out_color = vec4(final_color, frag_alpha);
+            
+            // Output world position for height-based fog
+            out_world_pos = vec4(frag_pos, 1.0);
         }
         """
         
@@ -815,14 +819,16 @@ class IsometricVisualizer:
         
         # Main scene framebuffer - rendered scene will go here
         self.scene_color_texture = self.ctx.texture((width, height), 4, dtype='f4')  # RGBA float
+        self.scene_world_pos_texture = self.ctx.texture((width, height), 4, dtype='f4')  # World position
         self.scene_depth_texture = self.ctx.depth_texture((width, height))
         self.scene_fbo = self.ctx.framebuffer(
-            color_attachments=[self.scene_color_texture],
+            color_attachments=[self.scene_color_texture, self.scene_world_pos_texture],
             depth_attachment=self.scene_depth_texture
         )
         
         # Configure texture filtering
         self.scene_color_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        self.scene_world_pos_texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
         
         print(f"Framebuffers initialized: {width}x{height}")
     
@@ -865,8 +871,10 @@ class IsometricVisualizer:
         
         uniform sampler2D scene_texture;
         uniform sampler2D depth_texture;
+        uniform sampler2D world_pos_texture;
         uniform float fog_density;
         uniform vec3 fog_color;
+        uniform float fog_height_falloff;
         
         // Convert depth buffer value to linear depth
         float linearizeDepth(float depth, float near, float far) {
@@ -877,12 +885,21 @@ class IsometricVisualizer:
         void main() {
             vec3 color = texture(scene_texture, uv).rgb;
             float depth = texture(depth_texture, uv).r;
+            vec3 world_pos = texture(world_pos_texture, uv).rgb;
             
             // Linearize depth (assuming near=0.1, far=500.0 from projection)
             float linear_depth = linearizeDepth(depth, 0.1, 500.0);
             
+            // Height-based fog density modifier
+            // Lower heights get denser fog (cyberpunk street-level smog)
+            float height_factor = exp(-world_pos.y * fog_height_falloff);
+            height_factor = clamp(height_factor, 0.0, 1.0);
+            
+            // Combined fog density (distance + height)
+            float combined_density = fog_density * (1.0 + height_factor * 2.0);
+            
             // Calculate fog factor (exponential fog)
-            float fog_factor = exp(-fog_density * linear_depth * 0.01);
+            float fog_factor = exp(-combined_density * linear_depth * 0.01);
             fog_factor = clamp(fog_factor, 0.0, 1.0);
             
             // Mix scene color with fog
@@ -906,6 +923,7 @@ class IsometricVisualizer:
         # Set default fog parameters
         self.fog_density = 0.3
         self.fog_color = (0.1, 0.1, 0.12)  # Dark blue-gray
+        self.fog_height_falloff = 0.05  # Lower values = more ground-level fog
         
         print("Post-processing quad initialized")
 
@@ -1016,12 +1034,15 @@ class IsometricVisualizer:
         # Bind scene textures
         self.scene_color_texture.use(location=0)
         self.scene_depth_texture.use(location=1)
+        self.scene_world_pos_texture.use(location=2)
         self.quad_program['scene_texture'].value = 0
         self.quad_program['depth_texture'].value = 1
+        self.quad_program['world_pos_texture'].value = 2
         
         # Set fog uniforms
         self.quad_program['fog_density'].value = self.fog_density
         self.quad_program['fog_color'].value = self.fog_color
+        self.quad_program['fog_height_falloff'].value = self.fog_height_falloff
         
         # Render fullscreen quad
         self.quad_vao.render()
