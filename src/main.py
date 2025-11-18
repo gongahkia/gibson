@@ -1271,11 +1271,6 @@ class IsometricVisualizer:
         self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
         self.ctx.clear_color = (0.1, 0.1, 0.1, 1.0)
         
-        # Legacy OpenGL for UI overlay only (2D rendering)
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glMatrixMode(GL_MODELVIEW)
-        
         # Initialize framebuffers for post-processing
         self._init_framebuffers()
         
