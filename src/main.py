@@ -7,6 +7,7 @@ import pygame
 import numpy as np
 import moderngl
 import glm
+from dataclasses import dataclass
 from enum import Enum
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -162,6 +163,63 @@ CELL_TO_MATERIAL = {
     CellType.BRIDGE: MaterialType.STEEL,
     CellType.FACADE: MaterialType.GLASS,
     CellType.STAIR: MaterialType.METAL,
+}
+
+@dataclass
+class Material:
+    """
+    material properties for PBR-inspired rendering
+    """
+    base_color: tuple  # RGB color (0-1 range)
+    metallic: float    # 0.0 = dielectric, 1.0 = metal
+    roughness: float   # 0.0 = smooth/glossy, 1.0 = rough/matte
+    emission: float    # 0.0 = no glow, >0 = emissive strength
+    alpha: float       # 0.0 = transparent, 1.0 = opaque
+
+# Material definitions with properties
+MATERIAL_PROPERTIES = {
+    MaterialType.CONCRETE: Material(
+        base_color=(0.6, 0.6, 0.65),
+        metallic=0.0,
+        roughness=0.9,
+        emission=0.0,
+        alpha=1.0
+    ),
+    MaterialType.GLASS: Material(
+        base_color=(0.7, 0.85, 0.95),
+        metallic=0.0,
+        roughness=0.1,
+        emission=0.0,
+        alpha=0.3
+    ),
+    MaterialType.METAL: Material(
+        base_color=(0.7, 0.7, 0.75),
+        metallic=0.8,
+        roughness=0.4,
+        emission=0.0,
+        alpha=1.0
+    ),
+    MaterialType.NEON: Material(
+        base_color=(0.1, 0.9, 0.9),
+        metallic=0.0,
+        roughness=0.2,
+        emission=2.0,
+        alpha=1.0
+    ),
+    MaterialType.RUST: Material(
+        base_color=(0.7, 0.4, 0.2),
+        metallic=0.5,
+        roughness=0.8,
+        emission=0.0,
+        alpha=1.0
+    ),
+    MaterialType.STEEL: Material(
+        base_color=(0.5, 0.5, 0.6),
+        metallic=0.9,
+        roughness=0.3,
+        emission=0.0,
+        alpha=1.0
+    ),
 }
 class MegaStructureGenerator:
 
