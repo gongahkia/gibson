@@ -512,7 +512,7 @@ class IsometricVisualizer:
         self.seed = generator.seed  # Store seed for display
         self.init_pygame()
         self._init_font_system()
-        self.debug_surface = pygame.Surface((200, 210), pygame.SRCALPHA).convert_alpha()
+        self.debug_surface = pygame.Surface((200, 270), pygame.SRCALPHA).convert_alpha()
         self._create_shaders()
         self._create_projection_matrix()
         self._init_camera()
@@ -856,7 +856,9 @@ class IsometricVisualizer:
             ("Neon", (0.1, 0.9, 0.9)),
             ("Steel", (0.5, 0.5, 0.6)),
             ("", (0, 0, 0)),  # Spacer
-            ("Keys: 1-5", (0.8, 0.8, 0.8)),
+            ("1-5: Views", (0.8, 0.8, 0.8)),
+            ("R: Regen", (0.8, 0.8, 0.8)),
+            ("S: Save Seed", (0.8, 0.8, 0.8)),
         ]
         for text, color in legend_items:
             pygame_color = [int(c * 255) for c in color]
@@ -924,14 +926,14 @@ class IsometricVisualizer:
         glBindTexture(GL_TEXTURE_2D, texture)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 200, 210, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 200, 270, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
         glEnable(GL_TEXTURE_2D)
         glColor4f(1, 1, 1, 1)
         glBegin(GL_QUADS)
         glTexCoord2f(0, 1); glVertex2f(self.display[0]-200, 0)
         glTexCoord2f(1, 1); glVertex2f(self.display[0], 0)
-        glTexCoord2f(1, 0); glVertex2f(self.display[0], 210)
-        glTexCoord2f(0, 0); glVertex2f(self.display[0]-200, 210)
+        glTexCoord2f(1, 0); glVertex2f(self.display[0], 270)
+        glTexCoord2f(0, 0); glVertex2f(self.display[0]-200, 270)
         glEnd()
         glDisable(GL_TEXTURE_2D)
         glDeleteTextures([texture])
