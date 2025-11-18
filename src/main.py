@@ -223,12 +223,13 @@ MATERIAL_PROPERTIES = {
 }
 class MegaStructureGenerator:
 
-    def __init__(self, size=30, layers=15):
+    def __init__(self, size=30, layers=15, seed=None):
         """
-        initialize the mega structure generator
+        initialize the mega structure generator with optional seed
         """
         self.size = size
         self.layers = layers
+        self.seed = seed
         self.grid = np.full((size, size, layers), CellType.EMPTY, dtype=object)
         self.connections = []
         self.rooms = []
