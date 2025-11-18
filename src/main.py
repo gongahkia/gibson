@@ -705,6 +705,24 @@ class IsometricVisualizer:
                         material_type = CELL_TO_MATERIAL.get(cell_type, MaterialType.CONCRETE)
                         material = MATERIAL_PROPERTIES[material_type]
                         
+                        # Randomly add neon accents to some facades
+                        if cell_type == CellType.FACADE and random.random() < 0.15:
+                            material_type = MaterialType.NEON
+                            material = MATERIAL_PROPERTIES[material_type]
+                            # Randomize neon color
+                            neon_colors = [
+                                (0.1, 0.9, 0.9),  # Cyan
+                                (0.9, 0.1, 0.9),  # Magenta
+                                (0.9, 0.9, 0.1),  # Yellow
+                            ]
+                            material = Material(
+                                base_color=random.choice(neon_colors),
+                                metallic=material.metallic,
+                                roughness=material.roughness,
+                                emission=material.emission,
+                                alpha=material.alpha
+                            )
+                        
                         # Add procedural color variation using 3D noise
                         noise_val = pnoise3(x * 0.1, y * 0.1, z * 0.1)
                         color_var = 0.1 * noise_val  # ±10% variation
