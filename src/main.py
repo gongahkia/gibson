@@ -504,53 +504,17 @@ class IsometricVisualizer:
         self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
         self.ctx.clear_color = (0.1, 0.1, 0.1, 1.0)
         
-        # Legacy OpenGL setup (will be removed in later commits)
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glClearColor(0.1, 0.1, 0.1, 1.0)
+        # Legacy OpenGL for UI overlay only (2D rendering)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, (self.display[0]/self.display[1]), 0.1, 1000.0)
         glMatrixMode(GL_MODELVIEW)
 
     def draw_cube(self, position, cell_type):
         """
-        draw a cube
+        Legacy draw_cube method - no longer used with instanced rendering
+        Kept for reference, will be removed in future cleanup
         """
-        x, y, z = position
-        glPushMatrix()
-        glTranslate(x, y, z)
-        colors = {
-            CellType.EMPTY: (0.1, 0.1, 0.1),
-            CellType.VERTICAL: (0.2, 0.6, 0.8),
-            CellType.HORIZONTAL: (0.8, 0.4, 0.2),
-            CellType.BRIDGE: (0.6, 0.8, 0.2),
-            CellType.FACADE: (0.9, 0.9, 0.7),
-            CellType.STAIR: (0.7, 0.3, 0.7)
-        }
-        glColor3fv(colors.get(cell_type, (1.0, 1.0, 1.0)))
-        vertices = [
-            (-0.4, -0.4, -0.4), ( 0.4, -0.4, -0.4), ( 0.4,  0.4, -0.4), (-0.4,  0.4, -0.4),
-            (-0.4, -0.4,  0.4), ( 0.4, -0.4,  0.4), ( 0.4,  0.4,  0.4), (-0.4,  0.4,  0.4)
-        ]
-        faces = [
-            (0, 1, 2, 3), (3, 2, 6, 7), (7, 6, 5, 4),
-            (4, 5, 1, 0), (1, 5, 6, 2), (4, 0, 3, 7)
-        ]
-        glBegin(GL_QUADS)
-        for face in faces:
-            for vertex in face:
-                glVertex3fv(vertices[vertex])
-        glEnd()
-        glColor3f(0.0, 0.0, 0.0)
-        glLineWidth(1.0)
-        glBegin(GL_LINES)
-        for edge in [(0,1), (1,2), (2,3), (3,0), (4,5), (5,6), (6,7), (7,4), (0,4), (1,5), (2,6), (3,7)]:
-            for vertex in edge:
-                glVertex3fv(vertices[vertex])
-        glEnd()
-        glPopMatrix()
+        pass
 
     def render_debug_panel(self):
         """
