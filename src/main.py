@@ -344,6 +344,44 @@ class IsometricVisualizer:
             vertex_shader=vertex_shader,
             fragment_shader=fragment_shader
         )
+        
+        # Create cube geometry
+        self._create_cube_geometry()
+    
+    def _create_cube_geometry(self):
+        """
+        create cube vertices and indices for shader rendering
+        """
+        # Cube vertices (position only, will expand later)
+        vertices = np.array([
+            # Front face
+            -0.4, -0.4,  0.4,
+             0.4, -0.4,  0.4,
+             0.4,  0.4,  0.4,
+            -0.4,  0.4,  0.4,
+            # Back face
+            -0.4, -0.4, -0.4,
+             0.4, -0.4, -0.4,
+             0.4,  0.4, -0.4,
+            -0.4,  0.4, -0.4,
+        ], dtype='f4')
+        
+        # Cube indices for triangles
+        indices = np.array([
+            0, 1, 2, 2, 3, 0,  # Front
+            1, 5, 6, 6, 2, 1,  # Right
+            5, 4, 7, 7, 6, 5,  # Back
+            4, 0, 3, 3, 7, 4,  # Left
+            3, 2, 6, 6, 7, 3,  # Top
+            4, 5, 1, 1, 0, 4,  # Bottom
+        ], dtype='i4')
+        
+        self.cube_vertices = vertices
+        self.cube_indices = indices
+        self.vbo = self.ctx.buffer(vertices.tobytes())
+        self.ibo = self.ctx.buffer(indices.tobytes())
+        
+        # Will create VAO in next commit with instancing
 
     def _init_font_system(self):
         """
