@@ -680,7 +680,7 @@ class IsometricVisualizer:
 
     def run(self):
         """
-        run the visualizer
+        run the visualizer with smooth camera controls
         """
         clock = pygame.time.Clock()
         while True:
@@ -689,16 +689,16 @@ class IsometricVisualizer:
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        self.angle = (self.angle - 45) % 360
-                    elif event.button == 3:
-                        self.angle = (self.angle + 45) % 360
-                    elif event.button == 4:  
-                        self.zoom = min(self.zoom * 1.1, 3.0)
-                    elif event.button == 5:  
-                        self.zoom = max(self.zoom / 1.1, 0.5)
+                    if event.button == 1:  # LMB - smooth rotate left
+                        self.camera.rotate(-45.0)
+                    elif event.button == 3:  # RMB - smooth rotate right
+                        self.camera.rotate(45.0)
+                    elif event.button == 4:  # Mouse wheel up - zoom in
+                        self.camera.zoom(-5.0)
+                    elif event.button == 5:  # Mouse wheel down - zoom out
+                        self.camera.zoom(5.0)
             self.render()
-            clock.tick(30)
+            clock.tick(60)
 
 # ----- EXECUTION CODE -----
 
