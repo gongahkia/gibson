@@ -585,33 +585,60 @@ class IsometricVisualizer:
         
         out vec4 out_color;
         
+        // Schlick's approximation for Fresnel reflectance
+        vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+            return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+        }
+        
         void main() {
-            // Simple PBR-inspired lighting
-            vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
-            vec3 view_dir = normalize(-frag_pos);
+            // Calculate surface normal from derivatives
             vec3 normal = normalize(cross(dFdx(frag_pos), dFdy(frag_pos)));
+            
+            // Light setup
+            vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
+            vec3 light_color = vec3(1.0, 0.98, 0.95);
+            
+            // View direction
+            vec3 view_dir = normalize(vec3(0.0) - frag_pos);
             vec3 halfway = normalize(light_dir + view_dir);
             
-            // Ambient
-            float ambient = 0.3;
+            // PBR calculations
+            float NdotL = max(dot(normal, light_dir), 0.0);
+            float NdotV = max(dot(normal, view_dir), 0.0);
+            float NdotH = max(dot(normal, halfway), 0.0);
             
-            // Diffuse
-            float diff = max(dot(normal, light_dir), 0.0);
-            diff = mix(diff, diff * 0.5 + 0.5, frag_metallic);
+            // Ambient occlusion approximation
+            float ao = 0.3 + 0.7 * (frag_pos.y / 30.0);
             
-            // Specular (affected by roughness and metallic)
-            float spec_power = mix(32.0, 4.0, frag_roughness);
-            float spec = pow(max(dot(normal, halfway), 0.0), spec_power);
-            spec *= (1.0 - frag_roughness) * mix(0.2, 1.0, frag_metallic);
+            // Base reflectivity for dielectrics (0.04) vs metals (albedo)
+            vec3 F0 = mix(vec3(0.04), frag_color, frag_metallic);
+            vec3 F = fresnelSchlick(max(dot(halfway, view_dir), 0.0), F0);
+            
+            // Diffuse (Lambert)
+            vec3 kD = (vec3(1.0) - F) * (1.0 - frag_metallic);
+            vec3 diffuse = kD * frag_color / 3.14159;
+            
+            // Specular (Blinn-Phong approximation)
+            float specular_power = mix(128.0, 8.0, frag_roughness);
+            float specular = pow(NdotH, specular_power);
+            specular *= (specular_power + 2.0) / (2.0 * 3.14159);
+            vec3 specular_color = F * specular;
             
             // Combine lighting
-            vec3 lit_color = frag_color * (ambient + diff * 0.7);
-            lit_color += vec3(spec) * mix(vec3(1.0), frag_color, frag_metallic);
+            vec3 ambient = vec3(0.15, 0.15, 0.18) * frag_color * ao;
+            vec3 radiance = (diffuse + specular_color) * light_color * NdotL;
+            vec3 final_color = ambient + radiance;
             
-            // Add emission
-            lit_color += frag_color * frag_emission;
+            // Add emission for glowing materials
+            final_color += frag_color * frag_emission;
             
-            out_color = vec4(lit_color, 1.0);
+            // Tone mapping (simple Reinhard)
+            final_color = final_color / (final_color + vec3(1.0));
+            
+            // Gamma correction
+            final_color = pow(final_color, vec3(1.0/2.2));
+            
+            out_color = vec4(final_color, 1.0);
         }
         """
         
