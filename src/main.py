@@ -989,6 +989,15 @@ class IsometricVisualizer:
                 # Wait for key release to avoid multiple triggers
                 pygame.time.wait(500)
             
+            # Press 'S' to save current seed to clipboard
+            if keys[pygame.K_s]:
+                print(f"Seed saved: {self.seed}")
+                # Write seed to a file for easy sharing
+                with open('current_seed.txt', 'w') as f:
+                    f.write(self.seed)
+                print("Seed written to current_seed.txt")
+                pygame.time.wait(500)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
