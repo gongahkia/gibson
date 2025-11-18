@@ -473,9 +473,12 @@ class MegaStructureGenerator:
 
     def save_structure(self, filename):
         """
-        save the structure
+        save the structure with seed for reproducibility
         """
         data = {
+            'seed': self.seed,
+            'size': self.size,
+            'layers': self.layers,
             'grid': [[[cell.value for cell in col] for col in layer] for layer in self.grid],
             'connections': self.connections,
             'rooms': self.rooms
@@ -485,10 +488,13 @@ class MegaStructureGenerator:
 
     def load_structure(self, filename):
         """
-        load the structure
+        load the structure with seed
         """
         with open(filename, 'r') as f:
             data = json.load(f)
+            self.seed = data.get('seed', None)
+            self.size = data.get('size', self.size)
+            self.layers = data.get('layers', self.layers)
             self.grid = np.array([[[CellType(cell) for cell in col] for col in layer] 
                                 for layer in data['grid']])
             self.connections = [tuple(map(tuple, c)) for c in data['connections']]
