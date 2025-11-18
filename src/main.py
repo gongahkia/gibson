@@ -1578,10 +1578,6 @@ class IsometricVisualizer:
         pygame.image.save(image, filename)
         print(f"Screenshot saved: {filename}")
 
-                y_offset += 20
-                
-                conn_text = self.font.render(f"Links: {info['connected_cells']}", True, (200, 200, 200))
-                self.debug_surface.blit(conn_text, (10, y_offset))
 
     def render(self):
         """
