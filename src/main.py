@@ -972,6 +972,23 @@ class IsometricVisualizer:
             if keys[pygame.K_5]:
                 self.camera.set_preset('isometric')
             
+            # Press 'R' to regenerate with new seed
+            if keys[pygame.K_r]:
+                print("Regenerating with new seed...")
+                new_seed = generate_seed()
+                print(f"New seed: {new_seed}")
+                # Regenerate structure
+                self.generator = MegaStructureGenerator(seed=new_seed)
+                self.generator.generate_mega()
+                self.generator.save_structure('structure.json')
+                self.seed = new_seed
+                # Update window title
+                pygame.display.set_caption(f"Gibson v2.0 - Seed: {new_seed}")
+                # Recreate rendering data
+                self._prepare_instance_data()
+                # Wait for key release to avoid multiple triggers
+                pygame.time.wait(500)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
