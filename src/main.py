@@ -364,7 +364,22 @@ class IsometricVisualizer:
         out vec4 out_color;
         
         void main() {
-            out_color = vec4(frag_color, 1.0);
+            // Calculate simple lighting based on position
+            vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
+            float ambient = 0.4;
+            float diffuse = 0.6;
+            
+            // Simple fake normal based on color variation
+            vec3 normal = normalize(vec3(
+                frag_color.r - 0.5,
+                frag_color.g - 0.5,
+                frag_color.b - 0.5
+            ));
+            
+            float light = ambient + diffuse * max(dot(normal, light_dir), 0.0);
+            vec3 lit_color = frag_color * light;
+            
+            out_color = vec4(lit_color, 1.0);
         }
         """
         
@@ -481,6 +496,10 @@ class IsometricVisualizer:
         # Initialize ModernGL context
         self.ctx = moderngl.create_context()
         self.ctx.enable(moderngl.DEPTH_TEST)
+        self.ctx.depth_func = '<'  # Less than depth test
+        self.ctx.enable(moderngl.CULL_FACE)
+        self.ctx.cull_face = 'back'
+        self.ctx.front_face = 'ccw'
         self.ctx.enable(moderngl.BLEND)
         self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
         self.ctx.clear_color = (0.1, 0.1, 0.1, 1.0)
