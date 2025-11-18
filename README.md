@@ -1,4 +1,5 @@
-[![](https://img.shields.io/badge/gibson_1.0.0-passing-green)](https://github.com/gongahkia/gibson/releases/tag/1.0.0) 
+[![](https://img.shields.io/badge/gibson_1.0.0-passing-light_green)](https://github.com/gongahkia/gibson/releases/tag/1.0.0) 
+[![](https://img.shields.io/badge/gibson_2.0.0-passing-green)](https://github.com/gongahkia/gibson/releases/tag/2.0.0) 
 
 # `Gibson` 🗼
 
