@@ -4,3 +4,5 @@ gibson_env
 structure.json
 .venv
 current_seed.txt
+gibson
+*.o
