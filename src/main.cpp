@@ -1705,7 +1705,7 @@ static void create_font_texture(){
     for(int ci=0;ci<96;ci++){
         int gx=(ci%16)*8, gy=(ci/16)*8;
         for(int row=0;row<8;row++) for(int col=0;col<8;col++){
-            bool on=(FONT8X8[ci][row]>>(7-col))&1;
+            bool on=(FONT8X8[ci][row]>>col)&1;
             int px=gx+col, py=gy+row;
             int idx=(py*tw+px)*4;
             pixels[idx]=pixels[idx+1]=pixels[idx+2]=on?255:0;
@@ -1868,7 +1868,7 @@ static void render_text_overlay(){
         int ci=c-32;
         if(ci<0||ci>=96) return;
         for(int row=0;row<8;row++) for(int col=0;col<8;col++){
-            if(!((FONT8X8[ci][row]>>(7-col))&1)) continue;
+            if(!((FONT8X8[ci][row]>>col)&1)) continue;
             int sx=px+col*2,sy=py+row*2;
             for(int dy=0;dy<2;dy++) for(int dx=0;dx<2;dx++){
                 int fx=sx+dx,fy=sy+dy;
@@ -2201,4 +2201,3 @@ int main(int argc,char** argv){
     glfwTerminate();
     return 0;
 }
-
