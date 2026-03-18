@@ -10,13 +10,15 @@ Randomly generated [megastructure](https://en.wikipedia.org/wiki/Megastructure)s
 ## Stack
 
 * *Script*: [C++](https://en.wikipedia.org/wiki/C%2B%2B), [Python](https://www.python.org/)
-* *Graphics*: [Pygame](https://www.pygame.org/), [ModernGL](https://moderngl.readthedocs.io/), [PyOpenGL](https://pyopengl.sourceforge.net/)
+* *Graphics*: [Pygame](https://www.pygame.org/), [ModernGL](https://moderngl.readthedocs.io/), [PyOpenGL](https://pyopengl.sourceforge.net/), [OpenGL 3.3](https://www.khronos.org/opengl/wiki/History_of_OpenGL#OpenGL_3.3_(2010)), [GLFW](https://www.glfw.org/), [GLSL](https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language)
 * *Math*: [PyGLM](https://github.com/Zuzu-Typ/PyGLM), [NumPy](https://numpy.org/) 
-* *Generation*: [pypi/noise](https://pypi.org/project/noise/) 
+* *Generation*: [pypi/noise](https://pypi.org/project/noise/), [Simplex noise](https://en.wikipedia.org/wiki/Simplex_noise), [Wave Function Collapse](https://github.com/mxgmn/WaveFunctionCollapse), [L-system](https://en.wikipedia.org/wiki/L-system), [Catmull-Rom spline](https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline)
+* *Build*: [Make](https://www.gnu.org/software/make/), [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
+* *Platform*: [Cocoa](https://developer.apple.com/documentation/cocoa), [IOKit](https://developer.apple.com/documentation/iokit), [Core Video](https://developer.apple.com/documentation/corevideo)
 
 ## Screenshot
 
-![](./asset/reference/v2/1.png)
+![](./asset/reference/v2/2.png)
 
 ## Usage
 
