@@ -305,6 +305,27 @@ static const char* DISTRICT_NAMES[DIST_COUNT]={
     "INDUSTRIAL","RESIDENTIAL","COMMERCIAL","SLUM","ELITE"
 };
 
+static bool is_walkable_floor_cell(CellType ct){
+    return ct==CELL_HORIZONTAL||ct==CELL_BRIDGE;
+}
+
+static bool is_traversal_carveable_cell(CellType ct){
+    switch(ct){
+        case CELL_HORIZONTAL:
+        case CELL_BRIDGE:
+        case CELL_FACADE:
+        case CELL_STAIR:
+        case CELL_PIPE:
+        case CELL_ANTENNA:
+        case CELL_CABLE:
+        case CELL_VENT:
+        case CELL_ELEVATOR:
+            return true;
+        default:
+            return false;
+    }
+}
+
 // ============================================================
 // [6] MATERIAL + DISTRICT TABLES
 // ============================================================
@@ -765,6 +786,7 @@ struct MegaStructureGenerator {
         phase4_erosion();
         ensure_structural_integrity();
         add_support_pillars();
+        carve_traversal_space();
     }
 
     // --- phase 1: L-system skeleton ---
@@ -1113,6 +1135,23 @@ struct MegaStructureGenerator {
                         grid[x][z][py]=CELL_VERTICAL;
                         support_map[x][z][py]=true;
                     } else break;
+                }
+            }
+        }
+    }
+
+    void carve_traversal_space(){
+        // Keep floor slabs, but open enough headroom above them for the FPS body.
+        for(int y=0;y<layers-2;y++){
+            for(int x=0;x<size;x++) for(int z=0;z<size;z++){
+                CellType ct=(CellType)grid[x][z][y];
+                if(!is_walkable_floor_cell(ct)) continue;
+                for(int dy=1;dy<=2&&y+dy<layers;dy++){
+                    CellType above=(CellType)grid[x][z][y+dy];
+                    if(is_traversal_carveable_cell(above)){
+                        grid[x][z][y+dy]=CELL_EMPTY;
+                        support_map[x][z][y+dy]=false;
+                    }
                 }
             }
         }
@@ -1627,6 +1666,7 @@ struct AppState {
     bool inspection_mode;
     bool show_legend;
     bool mouse_dragging;
+    bool reset_mouse_delta;
     double last_mx,last_my;
     bool keys[512];
     float time_val;
@@ -1861,6 +1901,50 @@ static void take_screenshot(){
     if(write_tga(fname,g.win_w,g.win_h,pixels.data())) printf("Screenshot: %s\n",fname);
 }
 
+static bool is_valid_fps_spawn_cell(int x,int z,int y){
+    if(x<=0||x>=GRID_SIZE-1||z<=0||z>=GRID_SIZE-1) return false;
+    if(y<=0||y+1>=GRID_LAYERS) return false;
+    if(!is_walkable_floor_cell((CellType)g.gen.grid[x][z][y-1])) return false;
+    return g.gen.grid[x][z][y]==CELL_EMPTY&&g.gen.grid[x][z][y+1]==CELL_EMPTY;
+}
+
+static bool find_fps_spawn(vec3& out_pos){
+    static const int ddx[4]={1,-1,0,0};
+    static const int ddz[4]={0,0,1,-1};
+    int best_score=-1000000;
+    int cx=GRID_SIZE/2,cz=GRID_SIZE/2,cy=std::max(1,GRID_LAYERS/3);
+    bool found=false;
+    for(int y=1;y<GRID_LAYERS-1;y++){
+        for(int x=1;x<GRID_SIZE-1;x++) for(int z=1;z<GRID_SIZE-1;z++){
+            if(!is_valid_fps_spawn_cell(x,z,y)) continue;
+            int floor_links=0;
+            int open_links=0;
+            int sheltered_links=0;
+            for(int d=0;d<4;d++){
+                int nx=x+ddx[d],nz=z+ddz[d];
+                if(is_walkable_floor_cell((CellType)g.gen.grid[nx][nz][y-1])) floor_links++;
+                if(g.gen.grid[nx][nz][y]==CELL_EMPTY&&g.gen.grid[nx][nz][y+1]==CELL_EMPTY) open_links++;
+                if(g.gen.grid[nx][nz][y-1]!=CELL_EMPTY||g.gen.grid[nx][nz][y+1]!=CELL_EMPTY) sheltered_links++;
+            }
+            int center_penalty=abs(x-cx)+abs(z-cz)+abs(y-cy)*3;
+            int score=floor_links*24+open_links*10+sheltered_links*4-center_penalty;
+            if(score>best_score){
+                best_score=score;
+                out_pos=vec3((float)x+0.5f,(float)y,(float)z+0.5f);
+                found=true;
+            }
+        }
+    }
+    return found;
+}
+
+static void reset_fps_camera_to_spawn(){
+    vec3 spawn((float)GRID_SIZE/2.f,1.f,(float)GRID_SIZE/2.f);
+    if(find_fps_spawn(spawn)) g.fps.init(spawn);
+    else g.fps.init(vec3((float)GRID_SIZE/2.f,(float)GRID_LAYERS/2.f+2.f,(float)GRID_SIZE/2.f));
+    g.reset_mouse_delta=true;
+}
+
 static void render_text_overlay(){
     int tw=g.win_w,th=g.win_h;
     std::vector<uint8_t> overlay(tw*th*4,0);
@@ -2060,7 +2144,7 @@ static void regenerate(){
     float cx=GRID_SIZE/2.f,cy=GRID_LAYERS/2.f,cz=GRID_SIZE/2.f;
     float dist=std::max((float)GRID_SIZE,(float)GRID_LAYERS)*1.5f;
     g.orbital.init(vec3(cx,cy,cz),dist);
-    g.fps.init(vec3(cx,GRID_LAYERS/2.f+2,cz));
+    reset_fps_camera_to_spawn();
 }
 
 static void key_callback(GLFWwindow* w,int key,int /*scancode*/,int action,int /*mods*/){
@@ -2072,7 +2156,7 @@ static void key_callback(GLFWwindow* w,int key,int /*scancode*/,int action,int /
             g.fps_mode=!g.fps_mode;
             if(g.fps_mode){
                 glfwSetInputMode(w,GLFW_CURSOR,GLFW_CURSOR_DISABLED);
-                g.fps.init(vec3(GRID_SIZE/2.f,(float)GRID_LAYERS/2.f+2,GRID_SIZE/2.f));
+                reset_fps_camera_to_spawn();
             } else glfwSetInputMode(w,GLFW_CURSOR,GLFW_CURSOR_NORMAL);
         }
         if(key==GLFW_KEY_R) regenerate();
@@ -2104,9 +2188,8 @@ static void mouse_button_callback(GLFWwindow* w,int button,int action,int /*mods
 
 static void cursor_pos_callback(GLFWwindow* /*w*/,double xpos,double ypos){
     if(g.fps_mode){
-        static bool first=true;
         static double lx=0,ly=0;
-        if(first){lx=xpos;ly=ypos;first=false;return;}
+        if(g.reset_mouse_delta){lx=xpos;ly=ypos;g.reset_mouse_delta=false;return;}
         g.fps.mouse_move((float)(xpos-lx),(float)(ypos-ly));
         lx=xpos;ly=ypos;
     } else if(g.mouse_dragging){
@@ -2170,10 +2253,11 @@ int main(int argc,char** argv){
     float cx=GRID_SIZE/2.f,cy=GRID_LAYERS/2.f,cz=GRID_SIZE/2.f;
     float dist=std::max((float)GRID_SIZE,(float)GRID_LAYERS)*1.5f;
     g.orbital.init(vec3(cx,cy,cz),dist);
-    g.fps.init(vec3(cx,cy+2,cz));
+    reset_fps_camera_to_spawn();
     g.fps_mode=false;
     memset(g.keys,0,sizeof(g.keys));
     g.mouse_dragging=false;
+    g.reset_mouse_delta=false;
     printf("Gibson C++: rendering %d instances\n",g.instance_count);
     while(!glfwWindowShouldClose(g.window)){
         glfwPollEvents();
