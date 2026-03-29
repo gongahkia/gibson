@@ -3,11 +3,11 @@
 
 # `Gibson`
 
-Single-file [2288](./src/main.cpp) *(or [1969](./src/main.py))*-line megastructure [generator](#seed).
+Single-file [2288](./src/main.cpp) *([1969](./src/main.py) or [2912](./src/main.rs))*-line megastructure [generator](#seed).
 
 ## Stack
 
-* *Script*: [C++](https://en.wikipedia.org/wiki/C%2B%2B), [Python](https://www.python.org/)
+* *Script*: [C++](https://en.wikipedia.org/wiki/C%2B%2B), [Python](https://www.python.org/), [Rust](https://rust-lang.org/)
 * *Graphics*: [OpenGL 3.3](https://www.khronos.org/opengl/wiki/History_of_OpenGL#OpenGL_3.3_(2010)), [GLFW](https://www.glfw.org/), [GLSL](https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language), [Pygame](https://www.pygame.org/), [ModernGL](https://moderngl.readthedocs.io/), [PyOpenGL](https://pyopengl.sourceforge.net/)
 * *Math*: [PyGLM](https://github.com/Zuzu-Typ/PyGLM), [NumPy](https://numpy.org/) 
 * *Generation*: [pypi/noise](https://pypi.org/project/noise/), [Simplex noise](https://en.wikipedia.org/wiki/Simplex_noise), [Wave Function Collapse](https://github.com/mxgmn/WaveFunctionCollapse), [L-system](https://en.wikipedia.org/wiki/L-system), [Catmull-Rom spline](https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline)
@@ -35,6 +35,14 @@ $ python3.12 -m venv gibson_env
 $ source gibson_env/bin/activate
 $ uv pip install -r src/requirements.txt
 $ python3 src/main.py
+```
+
+### Rust
+
+```console
+$ git clone https://github.com/gongahkia/gibson && cd gibson
+$ cargo run --release
+$ cargo run --release -- ABCD1234
 ```
 
 ## Seed
